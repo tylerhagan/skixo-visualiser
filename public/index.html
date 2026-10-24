@@ -187,6 +187,14 @@
       </div>
     </details>
     <details open data-tab="motion">
+      <summary>Section</summary>
+      <div class="grp">
+        <div id="mslot" data-v="all" hidden></div>
+        <div class="seg" id="mslotSeg" role="group" aria-label="Section to adjust"><button type="button" data-v="all">All</button><button type="button" data-v="q">Quiet</button><button type="button" data-v="l">Lifted</button><button type="button" data-v="p">Peak</button></div>
+        <p class="hint" id="mslotNote"></p>
+      </div>
+    </details>
+    <details open data-tab="motion">
       <summary>Movement</summary>
       <div class="grp">
         <div id="g-motion" class="grp" style="padding:0"></div>
@@ -203,7 +211,7 @@
     <details data-tab="motion">
       <summary>Glitch</summary>
       <div class="grp" id="g-glitch">
-        <p class="hint">Real glitches on the hits: scanline tearing, colour splits, block shifts and a VHS roll. Strongest at the peak moments, with a burst at each section change.</p>
+        <p class="hint">Glitches on the hits: tearing, colour splits, block shifts and a VHS roll, with a burst at each section change. Use the Section switch above to make it heavier at peaks or silent in quiet parts.</p>
       </div>
     </details>
     <details open data-tab="export">

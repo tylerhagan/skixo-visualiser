@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
-  bgDrift:0.5, glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', capPos:'bottom', capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', capPos:'bottom', capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[['poseLow','Side light at',0,1,0.01],['peakCount','Peak moments',0,4,1],['poseHold','Hold (s)',1,30,0.5]],
@@ -21,7 +21,7 @@ const SLIDERS = {
   'g-nod':[['nod','Nod depth',0,1,0.01],['nodGate','Nod from energy',0,1,0.01]],
   'g-typeS':[['textScale','Text size',0.5,2.5,0.05]],
   'g-caps':[['capSize','Caption size',0.5,2.5,0.05]],
-  'g-glitch':[['glitch','Glitch amount',0,1,0.01],['glitchQuiet','In quiet parts',0,2,0.05],['glitchLift','In lifted parts',0,2,0.05],['glitchPeak','At peaks',0,2,0.05],
+  'g-glitch':[['glitch','Glitch amount',0,1,0.01],
     ['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],['glitchBlocks','Block shifts',0,1,0.01],['glitchRoll','VHS roll',0,1,0.01]],
   'g-atmos':[['dashes','Glitch dashes',0,1,0.01],['dashSpeed','Dash speed',0,1,0.01],['clouds','Clouds',0,1,0.01],['cloudSpeed','Cloud drift',0,1,0.01],
     ['light','Window light',0,1,0.01],['grain','Print grain',0,1,0.01],['vignette','Vignette',0,1,0.01]]
@@ -54,7 +54,9 @@ function bindUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){
     $(k).addEventListener('input', e=>{
       const v=+e.target.value, slot=$('bgTarget') && $('bgTarget').value;
-      if(BGK[k] && slot && slot!=='all'){ S.bgAdj=Object.assign({q:null,l:null,p:null},S.bgAdj); S.bgAdj[slot]=Object.assign({},S.bgAdj[slot],{[BGK[k]]:v}); showAdj(); }
+      const ms=$('mslot') ? $('mslot').dataset.v : 'all';
+      if(MKEYS.includes(k) && ms!=='all'){ S.mAdj=Object.assign({q:{},l:{},p:{}},S.mAdj); S.mAdj[ms]=Object.assign({},S.mAdj[ms],{[k]:v}); showMotionSec(); }
+      else if(BGK[k] && slot && slot!=='all'){ S.bgAdj=Object.assign({q:null,l:null,p:null},S.bgAdj); S.bgAdj[slot]=Object.assign({},S.bgAdj[slot],{[BGK[k]]:v}); showAdj(); }
       else S[k] = v;
       $(k+'-o').textContent = fmtVal(v); onChange(k);
     });
@@ -620,7 +622,21 @@ function spectrumAt(t){
 }
 
 /* ---------------- the frame ---------------- */
+/* Motion settings can differ per section (quiet / lifted / peak). For each frame the effective
+   settings are the defaults with that section's overrides, blended across section changes. */
+const MKEYS = ['breathe','kick','sway','rings','spectrum','misprint','nod','glitch','glitchTear','glitchSplit','glitchBlocks','glitchRoll'];
+const SECK = ['q','l','p'];
+function motionAt(t){
+  const m=S.mAdj; if(!m || !(Object.keys(m.q||{}).length||Object.keys(m.l||{}).length||Object.keys(m.p||{}).length)) return S;
+  const ps=poseState(t), a=SECK[Math.min(ps.from,2)], b=SECK[Math.min(ps.to,2)], out=Object.assign({},S);
+  for(const k of MKEYS){ const va=(m[a]&&m[a][k])??S[k], vb=(m[b]&&m[b][k])??S[k]; out[k]=va+(vb-va)*ps.mix; }
+  return out;
+}
 function frame(ctx, W, H, t){
+  const S0=S; S=motionAt(t);
+  try{ frameInner(ctx,W,H,t); } finally { S=S0; }
+}
+function frameInner(ctx, W, H, t){
   const U = Math.min(W,H);             // unit: short side
   const tall = H > W;
   const dur = A ? A.dur : 200;
@@ -1187,7 +1203,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
@@ -1207,7 +1223,7 @@ const esc = t => String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&
 async function openRelease(id){
   saveLib(); stop(); LIB.current = id;
   S = Object.assign({}, DEFAULTS, grp().shared, rel().own);
-  syncUI(); setAspect(); refreshArt(); fillPickers(); persist(); if(S.bgId) pickBg(S.bgId,false); if(BGLIB.length) loadSecBgs();
+  syncUI(); setAspect(); refreshArt(); fillPickers(); persist(); if($('mslot')) showMotionSec(); if(S.bgId) pickBg(S.bgId,false); if(BGLIB.length) loadSecBgs();
   const a = await store.get('audio-'+id);
   if(a && a.blob){ setNote('audio', a.name); await loadAudio(a.blob); }
   else { buffer=null; A=null; CUES=[]; KEYS=[]; playhead=12; $('play').disabled=true; $('export').disabled=true; setNote('audio','None yet'); drawTimeline(); setStatus('Drop a track for this release'); requestDraw(); }
@@ -1249,6 +1265,21 @@ syncSeg();
 
 document.querySelectorAll('#frameTop button').forEach(b=>b.addEventListener('click',()=>{ const sel=$('aspect'); sel.value=b.dataset.v; sel.dispatchEvent(new Event('input',{bubbles:true})); syncSeg(); }));
 $('exportTop').addEventListener('click', ()=>document.querySelector('[data-go="export"]').click());
+
+/* ---------------- section switch for Motion ---------------- */
+function showMotionSec(){
+  const ms=$('mslot').dataset.v, m=S.mAdj||{};
+  for(const k of MKEYS){ const el=$(k); if(!el) continue; const own = ms!=='all' && m[ms] && m[ms][k]!==undefined;
+    const v = own ? m[ms][k] : S[k]; el.value=v; $(k+'-o').textContent=fmtVal(+v); el.closest('.row').classList.toggle('ovr', !!own); }
+  for(const id of ['nodGate','nodEvery']){ const row=$(id) && $(id).closest('.row'); if(row){ row.classList.toggle('dim', ms!=='all'); row.title = ms!=='all' ? 'Same for every section' : ''; } }
+  document.querySelectorAll('#mslotSeg button').forEach(b=>{ b.setAttribute('aria-pressed', b.dataset.v===ms); b.classList.toggle('has', b.dataset.v!=='all' && !!(m[b.dataset.v] && Object.keys(m[b.dataset.v]).length)); });
+  const names={all:'every section (the defaults)',q:'quiet sections',l:'lifted sections',p:'peak moments'};
+  const has = ms!=='all' && m[ms] && Object.keys(m[ms]).length;
+  $('mslotNote').innerHTML = `Movement, nod and glitch sliders now change <b>${names[ms]}</b>.` + (ms!=='all' ? (has ? ' Changed sliders are marked. <button type="button" class="linkbtn" id="mReset">Use defaults for this section</button>' : ' Nothing changed yet; it uses the defaults.') : '');
+  const r=$('mReset'); if(r) r.onclick=()=>{ S.mAdj[ms]={}; persist(); showMotionSec(); requestDraw(); };
+}
+document.querySelectorAll('#mslotSeg button').forEach(b=>b.addEventListener('click',()=>{ $('mslot').dataset.v=b.dataset.v; showMotionSec(); }));
+showMotionSec();
 
 /* ---------------- tabs ---------------- */
 (function(){
