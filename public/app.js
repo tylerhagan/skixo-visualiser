@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', useWordmark:false, lowercase:true,
-  ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[
@@ -24,7 +24,7 @@ const SLIDERS = {
     ['fadeIn','Fade in (s)',0,10,0.1],['fadeOut','Fade out (s)',0,10,0.1]],
   'g-atmos':[
     ['dashes','Glitch dashes',0,1,0.01],['dashSpeed','Dash speed',0,1,0.01],['clouds','Clouds',0,1,0.01],
-    ['cloudSpeed','Cloud drift',0,1,0.01],['light','Window light',0,1,0.01],['grain','Print grain',0,1,0.01],['vignette','Vignette',0,1,0.01]]
+    ['cloudSpeed','Cloud drift',0,1,0.01],['bgDrift','Background drift',0,1,0.01],['light','Window light',0,1,0.01],['grain','Print grain',0,1,0.01],['vignette','Vignette',0,1,0.01]]
 };
 let S = Object.assign({}, DEFAULTS);
 try{ const saved = JSON.parse(localStorage.getItem('skixo-vis-settings')||'null'); if(saved) S = Object.assign({}, DEFAULTS, saved); }catch(e){}
@@ -159,7 +159,7 @@ async function loadImage(src){
 async function setPose(slot, src, name){
   const bmp = await loadImage(src);
   setNote(slot, name || (typeof src==='string' ? 'Starter' : (src.name || 'Your file')));
-  if(slot==='w') IMGS.w = bmp;
+  if(slot==='w' || slot==='bg') IMGS[slot] = bmp;
   else if(NOD_SLOTS.includes(slot)){ RAW[slot] = bmp; buildNod(slot); }
   else { IMGS[slot] = maskPose(bmp); if(slot==='a'||slot==='b'||slot==='c') NOD_SLOTS.forEach(buildNod); if(slot==='c'||slot==='h') rebuildCues(); }
   requestDraw();
@@ -517,6 +517,13 @@ function frame(ctx, W, H, t){
   ctx.save();
   ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1;
   ctx.fillStyle = S.paperCol; ctx.fillRect(0,0,W,H);
+  if(IMGS.bg && S.layout!=='wallpaper'){
+    // background scene: cover-fit with a slow drift and breathing zoom
+    const im=IMGS.bg, d=S.bgDrift, z=(1.08 + Math.sin(t*2*Math.PI/47)*0.03*d) * (1 + hitEnv(A&&A.kicks,t,0.2)*S.kick*0.006);
+    const sc=Math.max(W/im.width, H/im.height)*z;
+    const px=Math.sin(t*2*Math.PI/71)*W*0.025*d, py=Math.cos(t*2*Math.PI/59)*H*0.015*d;
+    ctx.drawImage(im, W/2+px-im.width*sc/2, H/2+py-im.height*sc/2, im.width*sc, im.height*sc);
+  }
 
   // badge geometry
   let size, cx, cy;
@@ -763,13 +770,13 @@ async function takeFile(file, slot){
     if(file.type.startsWith('audio') || /\.(wav|mp3|flac|ogg|m4a|aiff?)$/i.test(file.name)){ await loadAudio(file); store.put('audio-'+(LIB?LIB.current:'x'), file, file.name); $('trackName').textContent = file.name; setNote('audio', file.name); return; }
     if(file.type.startsWith('image')){
       const nm = file.name.match(/nod[-_ ]?(side|flat|peak)[-_ ]?([12])/i);
-      const s = slot || (nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
+      const s = slot || (nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /^(bg|scene|background)/i.test(file.name) ? 'bg' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
       await setPose(s, file); store.put('img-'+s, file, file.name); if(s==='h') rebuildCues(); setStatus(`Loaded ${file.name}`);
     }
   }catch(err){ setStatus(`Couldn't read ${file.name}. Try a WAV, MP3, PNG or JPG.`, true); }
 }
 $('f-audio').addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0]));
-for(const s of ['a','b','c','h','w','n1c','n2c','n1f','n2f','n1p','n2p']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
+for(const s of ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
 const app = $('app');
 app.addEventListener('dragover', e=>{ e.preventDefault(); app.classList.add('drop'); });
 app.addEventListener('dragleave', e=>{ if(e.target===app) app.classList.remove('drop'); });
@@ -893,12 +900,13 @@ const store = (()=>{
     clear:()=> tx('readwrite', o=>o.clear()).catch(()=>{})
   };
 })();
+$('clearBg').addEventListener('click', async ()=>{ IMGS.bg=null; await store.put('img-bg', null, ''); setNote('bg','Empty'); requestDraw(); });
 $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setStatus('Saved files forgotten. Reload to return to the starter artwork.'); });
 
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','light','grain','vignette','artist','textPos','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','bgDrift','light','grain','vignette','artist','textPos','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
@@ -950,7 +958,7 @@ syncUI(); bindUI(); setAspect(); markLook();
     const starter = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/peak-face.jpg', w:'assets/wallpaper.jpg',
       n1f:'assets/nod-flat-1.jpg', n2f:'assets/nod-flat-2.jpg', n1c:'assets/nod-side-1.jpg', n2c:'assets/nod-side-2.jpg',
       n1p:'assets/nod-peak-1.jpg', n2p:'assets/nod-peak-2.jpg' };
-    await Promise.all(['a','b','c','h','w','n1c','n2c','n1f','n2f','n1p','n2p'].map(async k=>{
+    await Promise.all(['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p'].map(async k=>{
       const saved = await store.get('img-'+k);
       if(saved && saved.blob) return setPose(k, saved.blob, saved.name);
       if(starter[k]) return setPose(k, starter[k]);
