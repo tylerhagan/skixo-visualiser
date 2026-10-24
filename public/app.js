@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', useWordmark:false, lowercase:true,
-  ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:''
+  ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[
@@ -28,7 +28,7 @@ const SLIDERS = {
 };
 let S = Object.assign({}, DEFAULTS);
 try{ const saved = JSON.parse(localStorage.getItem('skixo-vis-settings')||'null'); if(saved) S = Object.assign({}, DEFAULTS, saved); }catch(e){}
-function persist(){ try{ localStorage.setItem('skixo-vis-settings', JSON.stringify(S)); }catch(e){} }
+function persist(){ try{ localStorage.setItem('skixo-vis-settings', JSON.stringify(S)); }catch(e){} if(typeof saveLib==='function') saveLib(); }
 
 const $ = id => document.getElementById(id);
 function buildSliders(){
@@ -45,7 +45,7 @@ buildSliders();
 const fmtVal = v => (Math.abs(v)>=10? v.toFixed(0) : (+v).toFixed(2).replace(/0$/,''));
 function syncUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm']) $(k).value = S[k];
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge']) $(k).value = S[k];
   $('useWordmark').checked = S.useWordmark; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
@@ -53,7 +53,7 @@ function bindUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){
     $(k).addEventListener('input', e=>{ S[k] = +e.target.value; $(k+'-o').textContent = fmtVal(S[k]); onChange(k); });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
   for(const k of ['useWordmark','lowercase','snapKick']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
@@ -64,6 +64,7 @@ function onChange(k){
     if(S.poseMode==='manual' && !S.manualCues.trim() && A){ S.manualCues = cuesToText(autoCues()); $('manualCues').value = S.manualCues; }
   }
   if(k==='aspect') setAspect();
+  if(k==='edge' || (k==='paperCol' && (S.edge||'auto')==='auto')) refreshArt();
   if(k==='bpm' && A){ A.grid = beatGrid(); showGrid(); }
   if(k==='ink') wordmarkImg = null, loadWordmark();
   if(['ink','blue','paperCol'].includes(k)){ S.look='custom'; markLook(); }
@@ -117,9 +118,7 @@ function tintCanvas(bmp){
 function applyLook(id){
   const L = LOOKS.find(l=>l.id===id); if(!L) return;
   Object.assign(S, {paperCol:L.paperCol, ink:L.ink, blue:L.blue, artTint:L.artTint, look:L.id});
-  syncUI(); overlayCache={}; makeClouds(S.blue); wordmarkImg=null; loadWordmark();
-  for(const k of ['a','b','c','h']) if(IMGS[k]) IMGS[k]=maskPose(IMGS[k]._src);
-  NOD_SLOTS.forEach(buildNod); markLook(); persist(); requestDraw();
+  syncUI(); refreshArt(); persist();
 }
 function markLook(){ document.querySelectorAll('.look').forEach(b=>b.setAttribute('aria-pressed', b.dataset.id===S.look)); }
 (function buildLooks(){
@@ -131,13 +130,24 @@ function markLook(){ document.querySelectorAll('.look').forEach(b=>b.setAttribut
   }
 })();
 
+function isDark(hex){ const v=parseInt(hex.slice(1),16); return (0.3*(v>>16&255)+0.59*(v>>8&255)+0.11*(v&255)) < 110; }
+// disc edge in the artwork sits at r 0.472, its cream rim runs to 0.492
+function edgeRadii(){ let m=S.edge||'auto'; if(m==='auto') m = isDark(S.paperCol) ? 'ring' : 'soft';
+  return m==='ring' ? [0.4905,0.4925] : m==='trim' ? [0.4695,0.4715] : [0.47,0.5]; }
+function refreshArt(){
+  overlayCache={}; makeClouds(S.blue); wordmarkImg=null; loadWordmark();
+  for(const k of ['a','b','c','h']) if(IMGS[k]) IMGS[k]=maskPose(IMGS[k]._src);
+  NOD_SLOTS.forEach(buildNod); markLook(); requestDraw();
+}
+
 function maskPose(bmp){
   const n = Math.max(bmp.width, bmp.height);
   const c = document.createElement('canvas'); c.width = c.height = n;
   const x = c.getContext('2d');
   x.drawImage(tintCanvas(bmp), (n-bmp.width)/2, (n-bmp.height)/2);
   x.globalCompositeOperation = 'destination-in';
-  const g = x.createRadialGradient(n/2,n/2,n*0.47,n/2,n/2,n*0.5);
+  const [r0,r1] = edgeRadii();
+  const g = x.createRadialGradient(n/2,n/2,n*r0,n/2,n/2,n*r1);
   g.addColorStop(0,'rgba(0,0,0,1)'); g.addColorStop(1,'rgba(0,0,0,0)');
   x.fillStyle = g; x.fillRect(0,0,n,n);
   c._src = bmp; return c;
@@ -750,7 +760,7 @@ new ResizeObserver(()=>drawTimeline()).observe(tl);
 /* ---------------- files in ---------------- */
 async function takeFile(file, slot){
   try{
-    if(file.type.startsWith('audio') || /\.(wav|mp3|flac|ogg|m4a|aiff?)$/i.test(file.name)){ await loadAudio(file); store.put('audio', file, file.name); $('trackName').textContent = file.name; setNote('audio', file.name); return; }
+    if(file.type.startsWith('audio') || /\.(wav|mp3|flac|ogg|m4a|aiff?)$/i.test(file.name)){ await loadAudio(file); store.put('audio-'+(LIB?LIB.current:'x'), file, file.name); $('trackName').textContent = file.name; setNote('audio', file.name); return; }
     if(file.type.startsWith('image')){
       const nm = file.name.match(/nod[-_ ]?(side|flat|peak)[-_ ]?([12])/i);
       const s = slot || (nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
@@ -885,6 +895,54 @@ const store = (()=>{
 })();
 $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setStatus('Saved files forgotten. Reload to return to the starter artwork.'); });
 
+/* ---------------- releases and groups ----------------
+   A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
+const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','light','grain','vignette','artist','textPos','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+let LIB = null, libTimer = null;
+const uid = ()=> Math.random().toString(36).slice(2,9);
+const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
+const rel = ()=> LIB.releases.find(r=>r.id===LIB.current);
+function splitS(){ const sh={}, own={}; for(const k in S) (SHARED_KEYS.includes(k)?sh:own)[k]=S[k]; return {sh,own}; }
+function saveLib(){
+  if(!LIB) return; const {sh,own}=splitS(); grp().shared=sh; rel().own=own;
+  clearTimeout(libTimer); libTimer=setTimeout(()=>store.put('library', JSON.stringify(LIB), 'library'), 300);
+}
+function fillPickers(){
+  const g=$('groupSel'), r=$('releaseSel'), cur=rel();
+  g.innerHTML = LIB.groups.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''); g.value = cur.groupId;
+  r.innerHTML = LIB.releases.filter(x=>x.groupId===cur.groupId).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''); r.value = cur.id;
+}
+const esc = t => String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function openRelease(id){
+  saveLib(); stop(); LIB.current = id;
+  S = Object.assign({}, DEFAULTS, grp().shared, rel().own);
+  syncUI(); setAspect(); refreshArt(); fillPickers(); persist();
+  const a = await store.get('audio-'+id);
+  if(a && a.blob){ setNote('audio', a.name); await loadAudio(a.blob); }
+  else { buffer=null; A=null; CUES=[]; KEYS=[]; playhead=12; $('play').disabled=true; $('export').disabled=true; setNote('audio','None yet'); drawTimeline(); setStatus('Drop a track for this release'); requestDraw(); }
+}
+function ownDefaults(name){ const own={}; for(const k in DEFAULTS) if(!SHARED_KEYS.includes(k)) own[k]=DEFAULTS[k]; own.title = name.toLowerCase(); own.aspect = S.aspect; return own; }
+function newRelease(groupId, name){ const r={id:uid(), groupId, name, own:ownDefaults(name)}; LIB.releases.push(r); return r; }
+$('groupSel').addEventListener('change', e=>{ const first = LIB.releases.find(r=>r.groupId===e.target.value); openRelease(first ? first.id : newRelease(e.target.value,'Untitled').id); });
+$('releaseSel').addEventListener('change', e=> openRelease(e.target.value));
+$('newRelease').addEventListener('click', ()=>{ const n = prompt('Name the new release'); if(n) { saveLib(); openRelease(newRelease(rel().groupId, n.trim()).id); } });
+$('newGroup').addEventListener('click', ()=>{ const n = prompt('Name the new group (album, series or playlist). It starts with the current look.'); if(!n) return;
+  saveLib(); const g={id:uid(), name:n.trim(), shared:{...grp().shared}}; LIB.groups.push(g); openRelease(newRelease(g.id,'Untitled').id); });
+$('renameRelease').addEventListener('click', ()=>{ const n = prompt('Rename this release', rel().name); if(n){ rel().name=n.trim(); fillPickers(); saveLib(); } });
+$('renameGroup').addEventListener('click', ()=>{ const n = prompt('Rename this group', grp().name); if(n){ grp().name=n.trim(); fillPickers(); saveLib(); } });
+async function loadLibrary(){
+  const saved = await store.get('library');
+  if(saved && saved.blob){ try{ LIB = JSON.parse(saved.blob); }catch(e){ LIB=null; } }
+  if(!LIB || !LIB.releases || !LIB.releases.length){
+    const {sh,own}=splitS(); const g={id:uid(), name:'The skixO Service', shared:sh};
+    const r={id:uid(), groupId:g.id, name:S.title ? S.title.replace(/\b\w/g,c=>c.toUpperCase()) : 'Untitled', own};
+    LIB = {groups:[g], releases:[r], current:r.id};
+    const old = await store.get('audio'); if(old && old.blob) await store.put('audio-'+r.id, old.blob, old.name);
+  }
+  S = Object.assign({}, DEFAULTS, grp().shared, rel().own); syncUI(); setAspect(); fillPickers();
+}
+
 /* ---------------- boot ---------------- */
 syncUI(); bindUI(); setAspect(); markLook();
 (async ()=>{
@@ -898,7 +956,8 @@ syncUI(); bindUI(); setAspect(); markLook();
       if(starter[k]) return setPose(k, starter[k]);
     }).concat([document.fonts.load('500 20px "Libre Franklin"').catch(()=>{}), loadWordmark()]));
     makeClouds(S.blue); requestDraw();
-    const track = await store.get('audio');
+    await loadLibrary(); refreshArt();
+    const track = await store.get('audio-'+LIB.current);
     if(track && track.blob){ $('trackName').textContent = track.name; setNote('audio', track.name); await loadAudio(track.blob); }
     else setStatus('Drop a track anywhere to start');
   }catch(e){ setStatus('Could not load the starter files. Drop in a track and artwork to begin.', true); }

@@ -30,6 +30,16 @@
 
   <aside class="rail" id="rail">
     <details open>
+      <summary>Release</summary>
+      <div class="grp">
+        <div class="row wide"><label for="groupSel">Group</label><select id="groupSel"></select></div>
+        <div class="row wide"><label for="releaseSel">Release</label><select id="releaseSel"></select></div>
+        <div class="btns"><button id="newRelease">New release</button><button id="newGroup">New group</button></div>
+        <div class="btns"><button id="renameRelease">Rename release</button><button id="renameGroup">Rename group</button></div>
+        <p class="hint">Releases in a group share its look, motion and artist line. Each release keeps its own track, title and cues.</p>
+      </div>
+    </details>
+    <details open>
       <summary>Track &amp; artwork</summary>
       <div class="grp">
         <p class="hint">Drop an audio file or image anywhere on the page, or pick one here. Files stay in this browser and are remembered next time. Peak face is optional: the widest smile (or a rare peek) for the biggest lift. Without it, side light carries the peak.</p>
@@ -108,6 +118,7 @@
       <div class="grp">
         <div class="looks" id="looks"></div>
         <p class="hint">A look sets the paper, ink and accent, and recolours the artwork's blue to match. Fine-tune below.</p>
+        <div class="row wide"><label for="edge">Edge</label><select id="edge"><option value="auto">Auto (crisp on dark paper)</option><option value="soft">Soft</option><option value="ring">Crisp ring</option><option value="trim">Trimmed</option></select></div>
         <div class="row wide"><label for="ink">Ink</label><input type="color" id="ink"></div>
         <div class="row wide"><label for="blue">Blue</label><input type="color" id="blue"></div>
         <div class="row wide"><label for="paperCol">Paper</label><input type="color" id="paperCol"></div>

@@ -39,7 +39,7 @@ This serves `public/` without the password gate.
 
 ## Roadmap
 
-1. **Release groups.** Albums, playlists or series that share a look and scene, with each release inside storing its own track, titles and cue overrides. Switch a release from a list; export/import a group as a file for backup.
+1. **Release groups** (done): groups share look and motion; releases keep their own track, titles and cues. Still to do: export/import a group as a file for backup, and per-group artwork.
 2. **Scenes.** Moving backgrounds behind a calm mascot, each changing between quiet, lifted and peak sections:
    - Paper and clouds (current)
    - Time-of-day sky drifting across the track
