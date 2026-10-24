@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', useWordmark:false, lowercase:true,
-  bgDrift:0.5, glitch:0, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, glitch:0, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[
@@ -121,17 +121,36 @@ function tintCanvas(bmp){
 /* Match look to background: paper from the lightest tones, ink from the darkest,
    accent from the most saturated mid-tones. Sets a custom look and recolours the art to suit. */
 /* background library: bg/index.json lists set, palette and name for each bundled scene */
-let BGLIB=[], bgBlurCache=null;
-function blurredBg(){
-  const im=IMGS.bg; if(!S.bgBlur) return im;
-  if(bgBlurCache && bgBlurCache.im===im && bgBlurCache.b===S.bgBlur) return bgBlurCache.c;
+let BGLIB=[];
+const SECBG = {};   // section key -> bitmap
+function bgFor(pose){ const k=['q','l','p'][Math.min(pose,2)]; return (S.bgSec && S.bgSec[k] && SECBG[k]) || IMGS.bg; }
+function drawBg(ctx,W,H,t,img,alpha){
+  if(alpha<=0.002) return;
+  const im=blurredBg(img), d=S.bgDrift, z=(1.08 + Math.sin(t*2*Math.PI/47)*0.03*d) * (1 + hitEnv(A&&A.kicks,t,0.2)*S.kick*0.006);
+  const sc=Math.max(W/im.width, H/im.height)*z, px=Math.sin(t*2*Math.PI/71)*W*0.025*d, py=Math.cos(t*2*Math.PI/59)*H*0.015*d;
+  ctx.globalAlpha=alpha; ctx.drawImage(im, W/2+px-im.width*sc/2, H/2+py-im.height*sc/2, im.width*sc, im.height*sc); ctx.globalAlpha=1;
+}
+const blurCache = new Map();
+function blurredBg(im){
+  if(!S.bgBlur) return im;
+  const hit=blurCache.get(im); if(hit && hit.b===S.bgBlur) return hit.c;
   const pad=Math.round(Math.min(im.width,im.height)*0.04*S.bgBlur)*2;
   const c=document.createElement('canvas'); c.width=im.width; c.height=im.height; const x=c.getContext('2d');
   x.filter=`blur(${pad/2}px)`; x.drawImage(im,-pad,-pad,im.width+pad*2,im.height+pad*2);
-  bgBlurCache={im, b:S.bgBlur, c}; return c;
+  blurCache.set(im,{b:S.bgBlur, c}); return c;
+}
+async function loadSecBgs(){
+  for(const k of ['q','l','p']){ const id=S.bgSec&&S.bgSec[k]; SECBG[k] = id ? await loadImage(`bg/${id}.jpg`) : null; }
+  showSecBgs(); requestDraw();
+}
+function showSecBgs(){
+  const nm=id=>{ const it=BGLIB.find(b=>b.id===id); return it ? `${it.set} ${it.palette} ${it.name}` : '—'; };
+  const el=$('secBgs'); if(el) el.textContent = `Quiet: ${nm(S.bgSec.q)} · Lifted: ${nm(S.bgSec.l)} · Peak: ${nm(S.bgSec.p)}`;
 }
 async function pickBg(id, fromUser){
   const it=BGLIB.find(b=>b.id===id); if(!it) return;
+  const target = fromUser ? $('bgTarget').value : 'all';
+  if(target!=='all'){ S.bgSec = Object.assign({q:'',l:'',p:''}, S.bgSec, {[target]:id}); SECBG[target] = await loadImage(`bg/${id}.jpg`); showSecBgs(); persist(); requestDraw(); return; }
   IMGS.bg = await loadImage(`bg/${id}.jpg`); S.bgId=id; setNote('bg', `${it.set} · ${it.palette} · ${it.name}`);
   if(fromUser && S.bgMatch) matchBackground(); else persist();
   markBg(); requestDraw();
@@ -144,7 +163,8 @@ function renderBgGrid(){
     el.innerHTML=`<img src="bg/thumbs/${b.id}.jpg" alt="${b.name}" loading="lazy">`; el.addEventListener('click',()=>pickBg(b.id,true)); g.appendChild(el); });
   markBg();
 }
-fetch('bg/index.json').then(r=>r.json()).then(list=>{ BGLIB=list; renderBgGrid(); if(S.bgId) pickBg(S.bgId,false); }).catch(()=>{});
+fetch('bg/index.json').then(r=>r.json()).then(list=>{ BGLIB=list; renderBgGrid(); if(S.bgId) pickBg(S.bgId,false); loadSecBgs(); }).catch(()=>{});
+$('clearSecBgs').addEventListener('click', ()=>{ S.bgSec={q:'',l:'',p:''}; loadSecBgs(); persist(); });
 $('bgSet').addEventListener('change', renderBgGrid); $('bgPal').addEventListener('change', renderBgGrid);
 $('bgMatch').addEventListener('change', e=>{ S.bgMatch=e.target.checked; persist(); });
 
@@ -569,15 +589,11 @@ function frame(ctx, W, H, t){
   ctx.save();
   ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1;
   ctx.fillStyle = S.paperCol; ctx.fillRect(0,0,W,H);
-  if(IMGS.bg && S.layout!=='wallpaper'){
-    // background scene: cover-fit with a slow drift and breathing zoom
-    const im=blurredBg(), d=S.bgDrift;
-    ctx.globalAlpha=S.bgOpacity;
-    const _z0=0, z=(1.08 + Math.sin(t*2*Math.PI/47)*0.03*d) * (1 + hitEnv(A&&A.kicks,t,0.2)*S.kick*0.006);
-    const sc=Math.max(W/im.width, H/im.height)*z;
-    const px=Math.sin(t*2*Math.PI/71)*W*0.025*d, py=Math.cos(t*2*Math.PI/59)*H*0.015*d;
-    ctx.drawImage(im, W/2+px-im.width*sc/2, H/2+py-im.height*sc/2, im.width*sc, im.height*sc);
-    ctx.globalAlpha=1;
+  if(S.layout!=='wallpaper'){
+    // background scenes: one for the whole track, or one each for quiet, lifted and peak sections
+    const ps0 = poseState(t), a = bgFor(ps0.from), b = bgFor(ps0.to);
+    if(a && a===b) drawBg(ctx,W,H,t,a,S.bgOpacity);
+    else { if(a) drawBg(ctx,W,H,t,a,S.bgOpacity*(1-ps0.mix)); if(b) drawBg(ctx,W,H,t,b,S.bgOpacity*ps0.mix); }
   }
 
   // badge geometry
@@ -915,6 +931,13 @@ async function saveBlob(blob, name){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setStatus('Saved '+name);
 }
+$('saveStill').addEventListener('click', ()=>{
+  const tall=S.aspect==='9:16', r=$('res').value, d={1080:[1920,1080],1440:[2560,1440],720:[1280,720]}[r];
+  const W=tall?d[1]:d[0], H=tall?d[0]:d[1], c=document.createElement('canvas'); c.width=W; c.height=H;
+  frame(c.getContext('2d'),W,H,now());
+  const slug=(S.title||'still').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  c.toBlob(b=>saveBlob(b, `${slug}-${fmtTime(now()).replace(':','m')}s.png`), 'image/png');
+});
 $('saveAgain').addEventListener('click', ()=> lastBlob && saveBlob(lastBlob, lastName));
 $('cancel').addEventListener('click', ()=>{ cancelExport=true; });
 $('export').addEventListener('click', async ()=>{
@@ -1015,7 +1038,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','light','grain','vignette','artist','textPos','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','bgSec','light','grain','vignette','artist','textPos','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
@@ -1034,7 +1057,7 @@ const esc = t => String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&
 async function openRelease(id){
   saveLib(); stop(); LIB.current = id;
   S = Object.assign({}, DEFAULTS, grp().shared, rel().own);
-  syncUI(); setAspect(); refreshArt(); fillPickers(); persist(); if(S.bgId) pickBg(S.bgId,false);
+  syncUI(); setAspect(); refreshArt(); fillPickers(); persist(); if(S.bgId) pickBg(S.bgId,false); if(BGLIB.length) loadSecBgs();
   const a = await store.get('audio-'+id);
   if(a && a.blob){ setNote('audio', a.name); await loadAudio(a.blob); }
   else { buffer=null; A=null; CUES=[]; KEYS=[]; playhead=12; $('play').disabled=true; $('export').disabled=true; setNote('audio','None yet'); drawTimeline(); setStatus('Drop a track for this release'); requestDraw(); }

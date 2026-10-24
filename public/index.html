@@ -133,7 +133,10 @@
           <div class="file"><label for="f-bg">Background</label><input type="file" id="f-bg" accept="image/*"></div>
           <div class="row wide"><label for="bgSet">Scenes</label><select id="bgSet"><option value="all">All sets</option><option value="wistful">Wistful</option><option value="surreal">Surreal</option><option value="glitch">Glitch</option></select></div>
           <div class="row wide"><label for="bgPal">Palette</label><select id="bgPal"><option value="all">All palettes</option><option value="dusk">Dusk</option><option value="night">Night</option><option value="riso">Riso red</option><option value="sage">Sage</option></select></div>
+          <div class="row wide"><label for="bgTarget">Use for</label><select id="bgTarget"><option value="all">Whole track</option><option value="q">Quiet sections</option><option value="l">Lifted sections</option><option value="p">Peak moments</option></select></div>
           <div class="bggrid" id="bgGrid"></div>
+          <p class="hint" id="secBgs"></p>
+          <div class="btns"><button id="clearSecBgs">Clear section scenes</button></div>
           <div class="row wide"><label for="bgMatch">Match look</label><input type="checkbox" id="bgMatch"></div>
           <div class="btns"><button id="matchBg">Match look to background</button><button id="clearBg">Remove background</button></div>
         </div>
@@ -159,7 +162,7 @@
         <div class="row wide"><label for="res">Size</label><select id="res"><option value="1080">1080p (1920×1080)</option><option value="1440">1440p (2560×1440)</option><option value="720">720p, quick test</option></select></div>
         <div class="row wide"><label for="fps">Frame rate</label><select id="fps"><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
         <div class="row wide"><label for="range">Range</label><select id="range"><option value="full">Whole track</option><option value="test">15 s from playhead</option></select></div>
-        <div class="btns"><button class="primary" id="export" disabled>Render MP4</button><button id="cancel" hidden>Cancel</button><button id="saveAgain" hidden>Save again</button></div>
+        <div class="btns"><button class="primary" id="export" disabled>Render MP4</button><button id="saveStill">Save still (PNG)</button><button id="cancel" hidden>Cancel</button><button id="saveAgain" hidden>Save again</button></div>
         <div class="progress" aria-hidden="true"><div id="bar"></div></div>
         <p class="hint" id="exportNote">Renders frame by frame, so it's exact even on a slow machine. Best in Chrome or Edge; Firefox may export with Opus audio instead of AAC. The whole track at 1080p takes a few minutes.</p>
       </div>

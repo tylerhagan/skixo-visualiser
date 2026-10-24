@@ -42,7 +42,7 @@ This serves `public/` without the password gate.
 Done: release groups with shared looks, group backup files, looks with artwork recolouring, background library (sets x palettes) with opacity, blur and drift, glitch layer (tearing, colour split, block shifts, VHS roll, section bursts), tabbed panel.
 
 Next:
-1. Section-aware scenes: a different background (or glitch level) for quiet, lifted and peak sections.
+1. Section-aware scenes (done: backgrounds per quiet, lifted and peak). Still to do: per-section glitch level.
 2. Procedural scenes: time-of-day sky, halftone rays, record grooves, falling dashes.
 3. Per-group artwork (different mascot sets per group).
 4. More glitch: pixel-sort streaks, datamosh smear between scenes, mirrored/tiled world, floating repeated mascots.
