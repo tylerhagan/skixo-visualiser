@@ -1056,8 +1056,25 @@ function drawPlayhead(t){
 }
 let dragging=false;
 function tlSeek(e){ if(!buffer) return; const r=tl.getBoundingClientRect(); seek(Math.max(0,(e.clientX-r.left-TL_G)/(r.width-TL_G))*buffer.duration); }
-tl.addEventListener('pointerdown', e=>{ dragging=true; tl.setPointerCapture(e.pointerId); tlSeek(e); });
-tl.addEventListener('pointermove', e=>{ if(dragging) tlSeek(e); });
+/* lanes are clickable: Scene opens that section's slot, Mood opens Sections, Captions selects the line */
+function laneAt(e){ const r=tl.getBoundingClientRect(); let y=4, py=e.clientY-r.top; for(const [name,lh] of LANES){ if(py>=y-3 && py<=y+lh+3) return name; y+=lh+6; } return 'Audio'; }
+function tAt(e){ const r=tl.getBoundingClientRect(); return Math.max(0,(e.clientX-r.left-TL_G)/(r.width-TL_G))*(A?A.dur:0); }
+function openSection(tab,name){ document.querySelector(`[data-go="${tab}"]`).click(); const d=[...document.querySelectorAll('details[data-tab]')].find(x=>x.querySelector('summary').textContent===name); if(d){ d.open=true; d.scrollIntoView({block:'start',behavior:'smooth'}); } return d; }
+function editLane(lane,t){
+  if(!A) return;
+  if(lane==='Scene'){ const p=poseState(t).to; $('bgTarget').value=['q','l','p'][Math.min(p,2)]; markBg(); openSection('look','Scene'); }
+  else if(lane==='Mood'){ openSection('track','Sections'); }
+  else if(lane==='Captions'){
+    openSection('track','Captions'); const caps=parseCaptions(); let i=-1; caps.forEach((c,k)=>{ if(c.t<=t) i=k; });
+    if(i<0) return; const ta=$('captions'), lines=ta.value.split('\n');
+    // find the textarea line that holds this cue
+    let pos=0; for(const l of lines){ const m=l.match(/^\s*(\d+):(\d{1,2}(?:\.\d+)?)/); if(m && Math.abs((+m[1])*60+(+m[2])-caps[i].t)<0.001){ ta.focus(); ta.setSelectionRange(pos, pos+l.length); break; } pos+=l.length+1; }
+  }
+}
+const LANE_TIPS={Scene:'Click to choose the background for this section', Mood:'Click to adjust how the track is split into sections', Captions:'Click a caption to edit it', Audio:'Click or drag to move the playhead'};
+tl.addEventListener('pointerdown', e=>{ const lane=laneAt(e); dragging = lane==='Audio' || lane==='Mood' || true; tl.setPointerCapture(e.pointerId); tlSeek(e); tl._lane=lane; tl._t=tAt(e); });
+tl.addEventListener('pointerup', e=>{ if(tl._lane && Math.abs(tAt(e)-tl._t) < (A?A.dur:1)*0.005 && tl._lane!=='Audio') editLane(tl._lane, tl._t); tl._lane=null; });
+tl.addEventListener('pointermove', e=>{ if(dragging) tlSeek(e); else tl.title=LANE_TIPS[laneAt(e)]||''; tl.style.cursor = laneAt(e)==='Audio' ? 'ew-resize' : 'pointer'; });
 tl.addEventListener('pointerup', ()=>{ dragging=false; });
 new ResizeObserver(()=>drawTimeline()).observe(tl);
 
