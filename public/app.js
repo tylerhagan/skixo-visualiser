@@ -7,7 +7,7 @@ const DEFAULTS = {
   rings:0.45, misprint:0.3, spectrum:0.4,
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
-  title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', useWordmark:false, lowercase:true,
+  title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', useWordmark:false, lowercase:true,
   bgDrift:0.5, glitch:0, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
@@ -22,6 +22,7 @@ const SLIDERS = {
     ['badgeSize','Portrait size',0.4,1.0,0.01],['portraitY','Vertical position',-0.3,0.3,0.01],['breathe','Breathing',0,1,0.01],['kick','Kick pulse',0,1,0.01],
     ['sway','Sway',0,1,0.01],['rings','Kick rings',0,1,0.01],['misprint','Misprint',0,1,0.01],['spectrum','Spectrum ticks',0,1,0.01],
     ['fadeIn','Fade in (s)',0,10,0.1],['fadeOut','Fade out (s)',0,10,0.1]],
+  'g-typeS':[['textScale','Text size',0.5,2.5,0.05]],
   'g-glitch':[
     ['glitch','Glitch amount',0,1,0.01],['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],
     ['glitchBlocks','Block shifts',0,1,0.01],['glitchRoll','VHS roll',0,1,0.01]],
@@ -48,18 +49,18 @@ buildSliders();
 const fmtVal = v => (Math.abs(v)>=10? v.toFixed(0) : (+v).toFixed(2).replace(/0$/,''));
 function syncUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge']) $(k).value = S[k];
-  $('useWordmark').checked = S.useWordmark; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom']) $(k).value = S[k];
+  $('useWordmark').checked = S.useWordmark; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
 function bindUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){
     $(k).addEventListener('input', e=>{ S[k] = +e.target.value; $(k+'-o').textContent = fmtVal(S[k]); onChange(k); });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
-  for(const k of ['useWordmark','lowercase','snapKick']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
+  for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
 }
 function onChange(k){
   if(k==='poseMode'){
@@ -67,6 +68,7 @@ function onChange(k){
     if(S.poseMode==='manual' && !S.manualCues.trim() && A){ S.manualCues = cuesToText(autoCues()); $('manualCues').value = S.manualCues; }
   }
   if(k==='aspect') setAspect();
+  if(k==='font' || k==='fontCustom'){ $('fontCustomRow').hidden = S.font!=='custom'; ensureFont(); }
   if(k==='edge' || (k==='paperCol' && (S.edge||'auto')==='auto')) refreshArt();
   if(k==='bpm' && A){ A.grid = beatGrid(); showGrid(); }
   if(k==='ink') wordmarkImg = null, loadWordmark();
@@ -384,7 +386,7 @@ async function loadAudio(src){
   buffer = await getCtx().decodeAudioData(ab);
   playhead = Math.min(playhead, buffer.duration-0.1);
   await analyse(buffer);
-  $('play').disabled = false; $('export').disabled = false;
+  $('play').disabled = false; $('export').disabled = false; $('canvasLoop').disabled = false;
   requestDraw();
 }
 /* envelope from discrete hits, evaluated statelessly at t */
@@ -779,23 +781,63 @@ function drawSpectrum(ctx,cx,cy,r,U,t){
   }
   ctx.globalAlpha=1;
 }
-function drawText(ctx,W,H,U,tall,t){
-  if(S.textPos==='off') return;
+let RENDER_STILL = false;
+/* Fonts: a curated Google set loads on demand; "Installed font" uses any font on this computer by name. */
+const GFONTS = ['Libre Franklin','Archivo Black','Bebas Neue','Anton','Syne','Unbounded','Space Grotesk','DM Serif Display','Fraunces','Instrument Serif','Space Mono','Rubik Mono One'];
+const FONT = ()=> { const f = S.font==='custom' ? (S.fontCustom||'Arial') : S.font; return `"${f}", "Libre Franklin", "Helvetica Neue", Arial, sans-serif`; };
+const loadedFonts = new Set(['Libre Franklin']);
+async function ensureFont(){
+  const f = S.font==='custom' ? S.fontCustom : S.font; if(!f) return;
+  if(S.font!=='custom' && !loadedFonts.has(f)){
+    const l=document.createElement('link'); l.rel='stylesheet';
+    l.href=`https://fonts.googleapis.com/css2?family=${encodeURIComponent(f).replace(/%20/g,'+')}:wght@400;500;600;700&display=swap`;
+    document.head.appendChild(l); loadedFonts.add(f); await new Promise(r=>{ l.onload=r; l.onerror=r; });
+  }
+  try{ await document.fonts.load(`600 40px "${f}"`); await document.fonts.load(`400 40px "${f}"`); }catch(e){}
+  requestDraw();
+}
+function drawHeadline(ctx,W,H,U,mode){
   const lc = s => S.lowercase ? s.toLowerCase() : s;
-  const title = lc(S.title||''), artist = S.artist||'', credit = S.credit||'';
+  const title = S.showTitle===false ? '' : lc((RENDER_STILL && S.stillHeadline) || S.title || '');
+  const sc = S.textScale||1; let ts = U*0.17*sc;
+  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
+  const font = px => `600 ${px}px ${FONT()}`;
+  ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`;
+  while(ts>U*0.04 && ctx.measureText(title).width > W*0.9){ ts*=0.92; ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`; }
+  const y = mode==='headline-top' ? H*0.16 : mode==='headline-bottom' ? H*0.82 : H*0.5;
+  const as = ts*0.3, showA = S.showArtist!==false;
+  const stroke=(txt,x,yy,w)=>{ ctx.strokeStyle=S.paperCol; ctx.lineWidth=w; ctx.strokeText(txt,x,yy); ctx.fillText(txt,x,yy); };
+  ctx.fillStyle=S.ink;
+  if(title) stroke(title, W/2, y, ts*0.16);
+  if(showA){
+    const ay = y + ts*0.62 + as*0.6;
+    if(S.useWordmark && wordmarkImg){
+      const h=as*1.4, w=h*wordmarkImg.naturalWidth/wordmarkImg.naturalHeight;
+      ctx.shadowColor=S.paperCol; ctx.shadowBlur=as*0.5; ctx.drawImage(wordmarkImg, W/2-w/2, ay-h/2, w, h); ctx.shadowBlur=0;
+    } else { ctx.font=`500 ${as}px ${FONT()}`; ctx.letterSpacing=`${as*0.14}px`; ctx.fillStyle=S.blue; stroke(S.artist||'', W/2, ay, as*0.3); }
+  }
+  ctx.restore(); ctx.letterSpacing='0px';
+}
+function drawText(ctx,W,H,U,tall,t){
+  const mode = (RENDER_STILL && S.stillText!=='same') ? S.stillText : S.textPos;
+  if(mode==='off' || mode==='none') return;
+  if(mode.startsWith('headline')) return drawHeadline(ctx,W,H,U,mode);
+  const lc = s => S.lowercase ? s.toLowerCase() : s;
+  const showA = S.showArtist!==false;
+  const title = S.showTitle===false ? '' : lc(S.title||''), artist = showA ? (S.artist||'') : '', credit = S.credit||'';
   const m = U*0.065;
   let x, y, align;
   if(tall || S.textPos==='bottom-centre'){ align='center'; x=W/2; y= tall ? H*0.78 : H - m*1.05; }
   else if(S.textPos==='top-left'){ align='left'; x=m; y=m+U*0.04; }
   else { align='left'; x=m; y=H-m*1.05; }
   ctx.textAlign=align; ctx.textBaseline='alphabetic';
-  const ts = U*(tall?0.05:0.044), as = U*(tall?0.028:0.024);
+  const ts = U*(tall?0.05:0.044)*(S.textScale||1), as = U*(tall?0.028:0.024)*(S.textScale||1);
   const topLeft = S.textPos==='top-left' && !tall;
   const titleY = topLeft ? y : y - as*1.7;
   const artY = topLeft ? y + as*1.7 : y;
   // soft paper backing so dashes, clouds or a busy scene never cut through the type
-  ctx.font = `500 ${ts}px "Libre Franklin", "Helvetica Neue", Arial, sans-serif`; ctx.letterSpacing = `${ts*-0.01}px`;
-  const artW = (S.useWordmark && wordmarkImg) ? as*1.25*wordmarkImg.naturalWidth/wordmarkImg.naturalHeight : (S.artist||'').length*as*0.72;
+  ctx.font = `500 ${ts}px ${FONT()}`; ctx.letterSpacing = `${ts*-0.01}px`;
+  const artW = !showA ? 0 : (S.useWordmark && wordmarkImg) ? as*1.25*wordmarkImg.naturalWidth/wordmarkImg.naturalHeight : (S.artist||'').length*as*0.72;
   const bw = Math.max(ctx.measureText(title).width, artW) + U*0.06;
   const top = titleY - ts*1.05, bottom = artY + as*(credit?1.9:0.75);
   const bx = align==='center' ? x-bw/2 : x-U*0.03;
@@ -804,16 +846,17 @@ function drawText(ctx,W,H,U,tall,t){
   ctx.fillRect(bx, top, bw, bottom-top); ctx.restore();
   ctx.fillStyle=S.ink; ctx.globalAlpha=0.92;
   ctx.fillText(title, x, titleY);
-  if(S.useWordmark && wordmarkImg){
+  if(!showA){}
+  else if(S.useWordmark && wordmarkImg){
     const h = as*1.25, w = h*wordmarkImg.naturalWidth/wordmarkImg.naturalHeight;
     const wx = align==='center' ? x-w/2 : x;
     ctx.drawImage(wordmarkImg, wx, artY-h*0.85, w, h);
   } else {
-    ctx.font = `400 ${as}px "Libre Franklin", "Helvetica Neue", Arial, sans-serif`; ctx.letterSpacing = `${as*0.12}px`;
+    ctx.font = `400 ${as}px ${FONT()}`; ctx.letterSpacing = `${as*0.12}px`;
     ctx.fillStyle=S.blue; ctx.fillText(artist, x, artY);
   }
   if(credit){
-    ctx.font = `300 ${as*0.72}px "Libre Franklin", "Helvetica Neue", Arial, sans-serif`; ctx.letterSpacing = `${as*0.06}px`;
+    ctx.font = `300 ${as*0.72}px ${FONT()}`; ctx.letterSpacing = `${as*0.06}px`;
     ctx.fillStyle=S.ink; ctx.globalAlpha=0.6; ctx.fillText(credit, x, artY + as*1.45);
   }
   ctx.globalAlpha=1; ctx.letterSpacing='0px';
@@ -931,49 +974,38 @@ async function saveBlob(blob, name){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setStatus('Saved '+name);
 }
-$('saveStill').addEventListener('click', ()=>{
-  const tall=S.aspect==='9:16', r=$('res').value, d={1080:[1920,1080],1440:[2560,1440],720:[1280,720]}[r];
-  const W=tall?d[1]:d[0], H=tall?d[0]:d[1], c=document.createElement('canvas'); c.width=W; c.height=H;
-  frame(c.getContext('2d'),W,H,now());
+$('saveStill').addEventListener('click', async ()=>{
+  await ensureFont();
+  const [W,H] = {yt:[1920,1080], ig:[1080,1350], story:[1080,1920], square:[1080,1080]}[$('stillSize').value];
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  RENDER_STILL=true; try{ frame(c.getContext('2d'),W,H,now()); } finally { RENDER_STILL=false; }
   const slug=(S.title||'still').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-  c.toBlob(b=>saveBlob(b, `${slug}-${fmtTime(now()).replace(':','m')}s.png`), 'image/png');
+  c.toBlob(b=>saveBlob(b, `${slug}-${$('stillSize').value}-${fmtTime(now()).replace(':','m')}s.png`), 'image/png');
 });
 $('saveAgain').addEventListener('click', ()=> lastBlob && saveBlob(lastBlob, lastName));
 $('cancel').addEventListener('click', ()=>{ cancelExport=true; });
-$('export').addEventListener('click', async ()=>{
-  if(!buffer) return;
-  if(!('VideoEncoder' in window)){ $('exportNote').textContent = 'This browser cannot encode video. Open the page in Chrome or Edge to render.'; return; }
-  stop();
-  const tall = S.aspect==='9:16', r = $('res').value;
-  const dims = {1080:[1920,1080], 1440:[2560,1440], 720:[1280,720]}[r];
-  const W = tall?dims[1]:dims[0], H = tall?dims[0]:dims[1];
-  const fps = +$('fps').value;
-  const t0 = $('range').value==='test' ? playhead : 0;
-  const t1 = $('range').value==='test' ? Math.min(buffer.duration, playhead+15) : buffer.duration;
+async function renderVideo({W,H,fps,t0,t1,audio=true,loop=0,label=''}){
+  const r = Math.max(W,H)>=2560 ? '1440' : Math.max(W,H)>=1920 ? '1080' : '720';
   const vbit = ({1080:12e6, 1440:20e6, 720:6e6})[r] * (fps===60?1.4:1);
-  // pick codecs
   let vcfg=null, vmux=null;
   for(const [codec,mux] of [[r==='1440'?'avc1.640033':'avc1.640028','avc'],['avc1.4d0033','avc'],['vp09.00.41.08','vp9']]){
     const cfg={codec, width:W, height:H, bitrate:vbit, framerate:fps, ...(mux==='avc'?{avc:{format:'avc'}}:{})};
     try{ if((await VideoEncoder.isConfigSupported(cfg)).supported){ vcfg=cfg; vmux=mux; break; } }catch(e){}
   }
-  if(!vcfg){ $('exportNote').textContent='No supported video encoder found in this browser.'; return; }
+  if(!vcfg){ $('exportNote').textContent='No supported video encoder found in this browser.'; return null; }
   const sr = buffer.sampleRate, ch = 2;
   let acfg=null, amux=null;
-  for(const [codec,mux] of [['mp4a.40.2','aac'],['opus','opus']]){
+  if(audio) for(const [codec,mux] of [['mp4a.40.2','aac'],['opus','opus']]){
     const cfg={codec, sampleRate:sr, numberOfChannels:ch, bitrate:192000};
     try{ if((await AudioEncoder.isConfigSupported(cfg)).supported){ acfg=cfg; amux=mux; break; } }catch(e){}
   }
-  await document.fonts.ready;
+  await ensureFont(); await document.fonts.ready;
   const target = new Mp4Muxer.ArrayBufferTarget();
   const muxer = new Mp4Muxer.Muxer({ target, fastStart:'in-memory', firstTimestampBehavior:'offset',
     video:{codec:vmux, width:W, height:H, frameRate:fps}, ...(acfg?{audio:{codec:amux, sampleRate:sr, numberOfChannels:ch}}:{}) });
   let failed=null;
   const venc = new VideoEncoder({ output:(c,m)=>muxer.addVideoChunk(c,m), error:e=>failed=e });
   venc.configure(vcfg);
-  $('export').disabled=true; $('cancel').hidden=false; $('saveAgain').hidden=true; cancelExport=false;
-  setStatus('Rendering…', true);
-  // audio
   if(acfg){
     const aenc = new AudioEncoder({ output:(c,m)=>muxer.addAudioChunk(c,m), error:e=>failed=e });
     aenc.configure(acfg);
@@ -981,43 +1013,66 @@ $('export').addEventListener('click', async ()=>{
     const s0 = Math.floor(t0*sr), s1 = Math.floor(t1*sr), CH=4800;
     for(let s=s0;s<s1;s+=CH){
       const n=Math.min(CH,s1-s), d=new Float32Array(n*2);
-      // gentle 50 ms fades at range edges so test clips don't click
       for(let i=0;i<n;i++){ const g = Math.min(1,(s+i-s0)/(0.05*sr),(s1-s-i)/(0.05*sr)); d[i]=L[s+i]*g; d[n+i]=R[s+i]*g; }
       const ad = new AudioData({format:'f32-planar', sampleRate:sr, numberOfFrames:n, numberOfChannels:2, timestamp:Math.round((s-s0)/sr*1e6), data:d});
       aenc.encode(ad); ad.close();
     }
     await aenc.flush(); aenc.close();
   }
-  // video
   const cv = document.createElement('canvas'); cv.width=W; cv.height=H; const cx=cv.getContext('2d');
+  const lb = loop ? document.createElement('canvas') : null; if(lb){ lb.width=W; lb.height=H; }
   const total = Math.round((t1-t0)*fps); const startClock = performance.now();
   for(let i=0;i<total;i++){
     if(cancelExport || failed) break;
     const t = t0 + i/fps;
     frame(cx, W, H, t);
+    if(lb && t > t1-loop){   // blend the tail into the head so the clip loops seamlessly
+      frame(lb.getContext('2d'), W, H, t-(t1-t0)); cx.globalAlpha=(t-(t1-loop))/loop; cx.drawImage(lb,0,0); cx.globalAlpha=1;
+    }
     const vf = new VideoFrame(cv, {timestamp: Math.round(i*1e6/fps), duration: Math.round(1e6/fps)});
     venc.encode(vf, {keyFrame: i % (fps*2) === 0}); vf.close();
     while(venc.encodeQueueSize > 4) await new Promise(r=>setTimeout(r,1));
     if(i%10===0){
       $('bar').style.width = (i/total*100).toFixed(1)+'%';
       const el=(performance.now()-startClock)/1000, eta = el/(i+1)*(total-i);
-      setStatus(`Rendering ${Math.round(i/total*100)}% · about ${fmtTime(eta)} left`, true);
+      setStatus(`Rendering ${label}${Math.round(i/total*100)}% · about ${fmtTime(eta)} left`, true);
       frame(sctx, stage.width, stage.height, t); drawPlayhead(t);
       await new Promise(r=>setTimeout(r,0));
     }
   }
   try{ await venc.flush(); }catch(e){} venc.close();
-  $('cancel').hidden=true; $('export').disabled=false; $('bar').style.width='0';
-  if(failed){ setStatus('Render failed: '+(failed.message||failed), true); return; }
-  if(cancelExport){ setStatus('Render cancelled'); requestDraw(); return; }
+  if(failed){ setStatus('Render failed: '+(failed.message||failed), true); return null; }
+  if(cancelExport) return null;
   muxer.finalize();
-  const blob = new Blob([target.buffer], {type:'video/mp4'});
-  const slug = (S.title||'visualiser').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-  lastName = `${slug}-${tall?'vertical':'wide'}-${H>W?W:H}p${fps}${$('range').value==='test'?'-test':''}.mp4`; lastBlob = blob;
-  $('saveAgain').hidden=false;
-  setStatus(`Rendered ${(blob.size/1e6).toFixed(0)} MB`);
+  return new Blob([target.buffer], {type:'video/mp4'});
+}
+const slugT = ()=> (S.title||'visualiser').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+function busy(on){ $('export').disabled=on; $('canvasLoop').disabled=on; $('cancel').hidden=!on; if(on){ $('saveAgain').hidden=true; cancelExport=false; } else $('bar').style.width='0'; }
+$('export').addEventListener('click', async ()=>{
+  if(!buffer) return;
+  if(!('VideoEncoder' in window)){ $('exportNote').textContent = 'This browser cannot encode video. Open the page in Chrome or Edge to render.'; return; }
+  stop(); busy(true);
+  const r=$('res').value, dims={1080:[1920,1080],1440:[2560,1440],720:[1280,720]}[r], fps=+$('fps').value;
+  const t0 = $('range').value==='test' ? playhead : 0, t1 = $('range').value==='test' ? Math.min(buffer.duration, playhead+15) : buffer.duration;
+  const aspects = $('formats').value==='both' ? ['16:9','9:16'] : [S.aspect];
+  for(const [i,a] of aspects.entries()){
+    const tall=a==='9:16', W=tall?dims[1]:dims[0], H=tall?dims[0]:dims[1];
+    const blob = await renderVideo({W,H,fps,t0,t1,label: aspects.length>1 ? `${a} (${i+1}/${aspects.length}) ` : ''});
+    if(!blob) break;
+    lastBlob=blob; lastName=`${slugT()}-${tall?'vertical':'wide'}-${Math.min(W,H)}p${fps}${$('range').value==='test'?'-test':''}.mp4`;
+    setStatus(`Rendered ${(blob.size/1e6).toFixed(0)} MB`); $('saveAgain').hidden=false; await saveBlob(blob, lastName);
+  }
+  busy(false); if(cancelExport) setStatus('Render cancelled'); requestDraw();
+});
+$('canvasLoop').addEventListener('click', async ()=>{
+  if(!buffer) return;
+  if(!('VideoEncoder' in window)){ $('exportNote').textContent = 'This browser cannot encode video. Open the page in Chrome or Edge to render.'; return; }
+  stop(); busy(true);
+  const t0=Math.min(playhead, Math.max(0,buffer.duration-8)), blob = await renderVideo({W:1080,H:1920,fps:30,t0,t1:t0+8,audio:false,loop:0.75,label:'Canvas '});
+  busy(false);
+  if(blob){ lastBlob=blob; lastName=`${slugT()}-spotify-canvas-${fmtTime(t0).replace(':','m')}s.mp4`; setStatus('Canvas ready'); $('saveAgain').hidden=false; await saveBlob(blob,lastName); }
+  else if(cancelExport) setStatus('Render cancelled');
   requestDraw();
-  saveBlob(blob, lastName);
 });
 
 /* ---------------- remembered files (IndexedDB, this browser only) ---------------- */
@@ -1038,7 +1093,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','bgSec','light','grain','vignette','artist','textPos','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','bgSec','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
@@ -1113,6 +1168,7 @@ $('importFile').addEventListener('change', async e=>{
 });
 
 /* ---------------- boot ---------------- */
+$('font').innerHTML = GFONTS.map(f=>`<option value="${f}">${f}</option>`).join('') + '<option value="custom">Installed font…</option>';
 syncUI(); bindUI(); setAspect(); markLook();
 (async ()=>{
   try{
@@ -1125,7 +1181,7 @@ syncUI(); bindUI(); setAspect(); markLook();
       if(starter[k]) return setPose(k, starter[k]);
     }).concat([document.fonts.load('500 20px "Libre Franklin"').catch(()=>{}), loadWordmark()]));
     makeClouds(S.blue); requestDraw();
-    await loadLibrary(); refreshArt(); if(S.bgId && BGLIB.length) pickBg(S.bgId,false);
+    await loadLibrary(); refreshArt(); $('fontCustomRow').hidden = S.font!=='custom'; ensureFont(); if(S.bgId && BGLIB.length) pickBg(S.bgId,false);
     const track = await store.get('audio-'+LIB.current);
     if(track && track.blob){ $('trackName').textContent = track.name; setNote('audio', track.name); await loadAudio(track.blob); }
     else setStatus('Drop a track anywhere to start');

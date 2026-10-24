@@ -39,9 +39,10 @@ This serves `public/` without the password gate.
 
 ## Roadmap
 
-Done: release groups with shared looks, group backup files, looks with artwork recolouring, background library (sets x palettes) with opacity, blur and drift, glitch layer (tearing, colour split, block shifts, VHS roll, section bursts), tabbed panel.
+Done: release groups with shared looks, group backup files, looks with artwork recolouring, background library (sets x palettes) with opacity, blur and drift, glitch layer (tearing, colour split, block shifts, VHS roll, section bursts), tabbed panel, section scenes, Spotify Canvas loops, dual-format renders, still presets (YouTube, Instagram 4:5, Story, square) with headline type, font choice (Google set or installed fonts).
 
 Next:
+0. Lyric and caption lines timed to the track; per-section glitch level.
 1. Section-aware scenes (done: backgrounds per quiet, lifted and peak). Still to do: per-section glitch level.
 2. Procedural scenes: time-of-day sky, halftone rays, record grooves, falling dashes.
 3. Per-group artwork (different mascot sets per group).

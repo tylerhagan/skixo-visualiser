@@ -118,7 +118,12 @@
         <div class="row wide"><label for="title">Title</label><input type="text" id="title"></div>
         <div class="row wide"><label for="artist">Artist</label><input type="text" id="artist"></div>
         <div class="row wide"><label for="credit">Small line</label><input type="text" id="credit" placeholder="e.g. originally by …"></div>
-        <div class="row wide"><label for="textPos">Position</label><select id="textPos"><option value="bottom-left">Bottom left</option><option value="bottom-centre">Bottom centre</option><option value="top-left">Top left</option><option value="off">Hidden</option></select></div>
+        <div class="row wide"><label for="textPos">Position</label><select id="textPos"><option value="bottom-left">Bottom left</option><option value="bottom-centre">Bottom centre</option><option value="top-left">Top left</option><option value="headline">Headline, centre</option><option value="headline-top">Headline, top</option><option value="headline-bottom">Headline, bottom</option><option value="off">Hidden</option></select></div>
+        <div class="row wide"><label for="font">Font</label><select id="font"></select></div>
+        <div class="row wide" id="fontCustomRow" hidden><label for="fontCustom">Installed font</label><input type="text" id="fontCustom" placeholder="Exact name, e.g. Futura PT"></div>
+        <div id="g-typeS" class="grp" style="padding:0"></div>
+        <div class="row wide"><label for="showTitle">Show title</label><input type="checkbox" id="showTitle"></div>
+        <div class="row wide"><label for="showArtist">Show artist</label><input type="checkbox" id="showArtist"></div>
         <div class="row wide"><label for="useWordmark">Wordmark</label><input type="checkbox" id="useWordmark"></div>
         <div class="row wide"><label for="lowercase">Lowercase title</label><input type="checkbox" id="lowercase"></div>
       </div>
@@ -161,9 +166,15 @@
       <div class="grp">
         <div class="row wide"><label for="res">Size</label><select id="res"><option value="1080">1080p (1920×1080)</option><option value="1440">1440p (2560×1440)</option><option value="720">720p, quick test</option></select></div>
         <div class="row wide"><label for="fps">Frame rate</label><select id="fps"><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
+        <div class="row wide"><label for="formats">Formats</label><select id="formats"><option value="one">Current frame shape</option><option value="both">Both 16:9 and 9:16</option></select></div>
         <div class="row wide"><label for="range">Range</label><select id="range"><option value="full">Whole track</option><option value="test">15 s from playhead</option></select></div>
-        <div class="btns"><button class="primary" id="export" disabled>Render MP4</button><button id="saveStill">Save still (PNG)</button><button id="cancel" hidden>Cancel</button><button id="saveAgain" hidden>Save again</button></div>
+        <div class="btns"><button class="primary" id="export" disabled>Render MP4</button><button id="canvasLoop" disabled>Spotify Canvas</button><button id="cancel" hidden>Cancel</button><button id="saveAgain" hidden>Save again</button></div>
         <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+        <div class="row wide"><label for="stillSize">Still</label><select id="stillSize"><option value="yt">YouTube thumbnail (16:9)</option><option value="ig">Instagram post (4:5)</option><option value="story">Story / Reel cover (9:16)</option><option value="square">Square (1:1)</option></select></div>
+        <div class="row wide"><label for="stillText">Still text</label><select id="stillText"><option value="same">Same as video</option><option value="headline">Headline, centre</option><option value="headline-top">Headline, top</option><option value="headline-bottom">Headline, bottom</option><option value="none">No text</option></select></div>
+        <div class="row wide"><label for="stillHeadline">Headline</label><input type="text" id="stillHeadline" placeholder="Uses the title"></div>
+        <div class="btns"><button id="saveStill">Save still (PNG)</button></div>
+        <p class="hint">Spotify Canvas renders 8 seconds from the playhead, vertical, silent and looping seamlessly.</p>
         <p class="hint" id="exportNote">Renders frame by frame, so it's exact even on a slow machine. Best in Chrome or Edge; Firefox may export with Opus audio instead of AAC. The whole track at 1080p takes a few minutes.</p>
       </div>
     </details>
