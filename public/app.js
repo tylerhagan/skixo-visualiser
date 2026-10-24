@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
-  bgDrift:0.5, glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capStyle:'outline', capColour:'ink', capWeight:'500', capCase:'typed', capAnim:'fade', capSpacing:0, capIn:0.25, capOut:0.3, capHold:6, capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[['poseLow','Side light at',0,1,0.01],['peakCount','Peak moments',0,4,1],['poseHold','Hold (s)',1,30,0.5]],
@@ -20,7 +20,7 @@ const SLIDERS = {
     ['spectrum','Spectrum ticks',0,1,0.01],['misprint','Misprint',0,1,0.01]],
   'g-nod':[['nod','Nod depth',0,1,0.01],['nodGate','Nod from energy',0,1,0.01]],
   'g-typeS':[['textScale','Text size',0.5,2.5,0.05]],
-  'g-caps':[['capSize','Caption size',0.5,2.5,0.05]],
+  'g-caps':[['capSize','Size',0.5,2.5,0.05],['capSpacing','Letter spacing',-0.05,0.3,0.01],['capIn','Fade in (s)',0,1.5,0.05],['capOut','Fade out (s)',0,1.5,0.05],['capHold','Max hold (s)',1,15,0.5]],
   'g-glitch':[['glitch','Glitch amount',0,1,0.01],
     ['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],['glitchBlocks','Block shifts',0,1,0.01],['glitchRoll','VHS roll',0,1,0.01]],
   'g-atmos':[['dashes','Glitch dashes',0,1,0.01],['dashSpeed','Dash speed',0,1,0.01],['clouds','Clouds',0,1,0.01],['cloudSpeed','Cloud drift',0,1,0.01],
@@ -46,7 +46,7 @@ const fmtVal = v => (Math.abs(v)>=10? v.toFixed(0) : (+v).toFixed(2).replace(/0$
 function syncUI(){
   if(typeof syncSeg==='function') setTimeout(syncSeg);
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics']) $(k).value = S[k];
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim']) $(k).value = S[k];
   $('useWordmark').checked = S.useWordmark; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
@@ -61,7 +61,7 @@ function bindUI(){
       $(k+'-o').textContent = fmtVal(v); onChange(k);
     });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
   for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
@@ -853,15 +853,37 @@ function drawCaption(ctx,W,H,U,t){
   const caps=parseCaptions(); if(!caps.length) return;
   let i=-1; for(let k=0;k<caps.length;k++){ if(caps[k].t<=t) i=k; else break; }
   if(i<0 || !caps[i].text) return;
-  const end = i+1<caps.length ? caps[i+1].t : (A?A.dur:caps[i].t+6);
-  const a = Math.min(1, (t-caps[i].t)/0.25, (end-t)/0.25); if(a<=0) return;
-  const lc = s => S.lowercase ? s.toLowerCase().replace(/skixo/g,'skixO') : s;
-  const txt = lc(caps[i].text), size = U*0.052*(S.capSize||1);
-  const y = S.capPos==='top' ? H*0.1 : S.capPos==='centre' ? H*0.5 : H*(H>W?0.88:0.79);
-  ctx.save(); ctx.globalAlpha=a; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
-  let fs=size; ctx.font=`500 ${fs}px ${FONT()}`; while(fs>U*0.02 && ctx.measureText(txt).width>W*0.86){ fs*=0.92; ctx.font=`500 ${fs}px ${FONT()}`; }
-  ctx.strokeStyle=S.paperCol; ctx.lineWidth=fs*0.22; ctx.strokeText(txt,W/2,y); ctx.fillStyle=S.ink; ctx.fillText(txt,W/2,y);
-  ctx.restore();
+  const c0=caps[i].t, end=Math.min(i+1<caps.length ? caps[i+1].t : Infinity, c0+S.capHold, A?A.dur:Infinity);
+  const fi=Math.max(0.001,S.capIn), fo=Math.max(0.001,S.capOut), pin=Math.min(1,(t-c0)/fi), pout=Math.min(1,(end-t)/fo);
+  if(pin<=0 || pout<=0) return;
+  let txt=caps[i].text;
+  if(S.capCase==='lower') txt=txt.toLowerCase(); else if(S.capCase==='upper') txt=txt.toUpperCase();
+  txt=txt.replace(/skixo/gi,'skixO');
+  const ease=p=>1-Math.pow(1-p,3);
+  let alpha = S.capAnim==='type' ? pout : Math.min(pin,pout);
+  if(S.capAnim==='type') txt = txt.slice(0, Math.ceil(txt.length*Math.min(1,(t-c0)/Math.max(0.3,fi*2))));
+  const col = S.capColour==='accent' ? S.blue : S.capColour==='paper' ? S.paperCol : S.ink;
+  const edge = S.capColour==='paper' ? S.ink : S.paperCol;
+  let fs=U*0.052*(S.capSize||1); const setFont=()=>{ ctx.font=`${S.capWeight||500} ${fs}px ${FONT()}`; ctx.letterSpacing=`${fs*(S.capSpacing||0)}px`; };
+  ctx.save(); setFont();
+  // wrap to two lines when long, then shrink only if still too wide
+  let lines=[txt]; const maxW=W*0.86;
+  if(ctx.measureText(txt).width>maxW){ const mid=txt.length/2; let cut=-1; for(let d=0; d<txt.length/2; d++){ if(txt[Math.floor(mid+d)]===' '){cut=Math.floor(mid+d);break;} if(txt[Math.floor(mid-d)]===' '){cut=Math.floor(mid-d);break;} }
+    if(cut>0) lines=[txt.slice(0,cut), txt.slice(cut+1)]; }
+  while(fs>U*0.02 && Math.max(...lines.map(l=>ctx.measureText(l).width))>maxW){ fs*=0.93; setFont(); }
+  const lh=fs*1.22, block=lh*lines.length;
+  let y = S.capPos==='top' ? H*0.1 : S.capPos==='centre' ? H*0.5 : H*(H>W?0.88:0.79);
+  y -= (lines.length-1)*lh/2;
+  if(S.capAnim==='rise') y += (1-ease(pin))*fs*0.5;
+  ctx.globalAlpha=alpha; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
+  if(S.capStyle==='box'){
+    const w=Math.max(...lines.map(l=>ctx.measureText(l).width))+fs*0.9, h=block+fs*0.35;
+    ctx.fillStyle=edge; ctx.globalAlpha=alpha*0.88; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W/2-w/2, y-lh/2-fs*0.17, w, h, fs*0.18) : ctx.rect(W/2-w/2, y-lh/2-fs*0.17, w, h); ctx.fill(); ctx.globalAlpha=alpha;
+  }
+  lines.forEach((l,k)=>{ const yy=y+k*lh;
+    if(S.capStyle==='outline'){ ctx.strokeStyle=edge; ctx.lineWidth=fs*0.22; ctx.strokeText(l,W/2,yy); }
+    ctx.fillStyle=col; ctx.fillText(l,W/2,yy); });
+  ctx.restore(); ctx.letterSpacing='0px';
 }
 /* Fonts: a curated Google set loads on demand; "Installed font" uses any font on this computer by name. */
 const GFONTS = ['Libre Franklin','Archivo Black','Bebas Neue','Anton','Syne','Unbounded','Space Grotesk','DM Serif Display','Fraunces','Instrument Serif','Space Mono','Rubik Mono One'];
