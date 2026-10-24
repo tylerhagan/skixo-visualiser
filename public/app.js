@@ -133,6 +133,54 @@ function tintCanvas(bmp){
 /* background library: bg/index.json lists set, palette and name for each bundled scene */
 let BGLIB=[];
 const SECBG = {};   // section key -> bitmap
+/* ---------------- procedural scenes: drawn every frame from time, palette and the track ---------------- */
+const PROCS = [{id:'proc-sky',name:'time of day sky'},{id:'proc-rays',name:'halftone rays'},{id:'proc-grooves',name:'record grooves'},{id:'proc-rain',name:'falling dashes'}];
+const hex2rgb = h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const mixc = (a,b,p)=>`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*p)).join(',')})`;
+function drawProc(ctx,W,H,t,kind,drift){
+  const U=Math.min(W,H), paper=hex2rgb(S.paperCol), acc=hex2rgb(S.blue), ink=hex2rgb(S.ink), dur=A?A.dur:180, k=hitEnv(A&&A.kicks,t,0.25), e=energyAt(t);
+  if(kind==='proc-sky'){
+    // dawn -> day -> dusk -> night across the track
+    const K=[[[243,201,165],[248,239,224]],[[156,195,221],[238,243,239]],[[240,138,93],[61,44,79]],[[15,22,48],[38,52,90]]];
+    const p=Math.min(0.999,Math.max(0,t/dur))*3, i=Math.floor(p), f=p-i, a=K[i], b=K[Math.min(3,i+1)];
+    const top=mixc(a[0],b[0],f), bot=mixc(a[1],b[1],f), g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,top); g.addColorStop(1,bot);
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    const arc=Math.min(1,t/dur), sx=W*(0.1+0.8*arc), sy=H*(0.75-0.55*Math.sin(Math.PI*arc));
+    ctx.fillStyle = p>2.3 ? 'rgba(240,236,220,0.9)' : 'rgba(255,236,190,0.85)'; ctx.beginPath(); ctx.arc(sx,sy,U*0.06,0,7); ctx.fill();
+    const night=Math.max(0,p-2.2)/0.8; if(night>0){ for(let s2=0;s2<140;s2++){ ctx.globalAlpha=night*(0.4+0.6*hash(s2*7))*(0.7+0.3*Math.sin(t*2+s2)); ctx.fillStyle='#f3efe2'; ctx.fillRect(hash(s2)*W, hash(s2*3)*H*0.7, U*0.003, U*0.003); } ctx.globalAlpha=1; }
+  } else if(kind==='proc-rays'){
+    ctx.fillStyle=S.paperCol; ctx.fillRect(0,0,W,H);
+    const n=24, rot=t*0.04*(0.3+drift*1.4), R=Math.hypot(W,H);
+    ctx.save(); ctx.translate(W/2,H/2); ctx.rotate(rot); ctx.fillStyle=mixc(paper,acc,0.35+k*0.25);
+    for(let i=0;i<n;i+=2){ const a0=i/n*Math.PI*2, a1=(i+1)/n*Math.PI*2; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,R,a0,a1); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    // halftone fade towards the centre
+    const g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,U*0.75); g.addColorStop(0,S.paperCol); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  } else if(kind==='proc-grooves'){
+    const dark = isDark(S.paperCol) ? paper : ink, light = isDark(S.paperCol) ? ink : paper;   // vinyl is always the darker tone
+    ctx.fillStyle=mixc(dark,acc,0.12); ctx.fillRect(0,0,W,H);
+    const cx=W/2, cy=H/2, R=Math.hypot(W,H)*0.55, spin=t*(0.5+drift*1.5);
+    ctx.strokeStyle=mixc(dark,light,0.16); ctx.lineWidth=Math.max(1,U*0.0018);
+    for(let r=U*0.2; r<R; r+=U*0.011){ ctx.globalAlpha=0.5+0.5*hash(Math.round(r)); ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.stroke(); }
+    ctx.globalAlpha=1;
+    // the sheen turns with the record
+    for(const off of [0,Math.PI]){ const g=ctx.createConicGradient ? ctx.createConicGradient(spin+off,cx,cy) : null; if(!g) break;
+      g.addColorStop(0,'rgba(255,255,255,0.16)'); g.addColorStop(0.06,'rgba(255,255,255,0)'); g.addColorStop(0.94,'rgba(255,255,255,0)'); g.addColorStop(1,'rgba(255,255,255,0.16)');
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
+    ctx.fillStyle=S.blue; ctx.beginPath(); ctx.arc(cx,cy,U*0.2,0,7); ctx.fill();
+  } else if(kind==='proc-rain'){
+    ctx.fillStyle=S.paperCol; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=S.blue; const n=110, sp=(0.15+e*0.6)*(0.4+drift*1.2);
+    for(let i=0;i<n;i++){ const x=hash(i*13)*W, len=(0.03+hash(i*7)*0.09)*H, y=((hash(i*3)+t*sp*(0.6+hash(i)))%1.2)*H*1.1-len;
+      ctx.globalAlpha=0.25+0.55*hash(i*5); ctx.fillRect(x,y,Math.max(1,U*0.003),len); }
+    ctx.globalAlpha=1;
+  }
+}
+const PROC_THUMB={};
+function procThumb(id){ if(PROC_THUMB[id]) return PROC_THUMB[id]; const c=document.createElement('canvas'); c.width=320; c.height=180; drawProc(c.getContext('2d'),320,180,A?A.dur*0.62:110,id,0.5); PROC_THUMB[id]=c; return c; }
+function bgThumb(id){ return id.startsWith('proc-') ? procThumb(id).toDataURL('image/jpeg',0.8) : `bg/thumbs/${id}.jpg`; }
+async function loadBgSrc(id){ if(id.startsWith('proc-')){ const th=procThumb(id); return {proc:id, thumb:th, width:th.width, height:th.height}; } return loadImage(`bg/${id}.jpg`); }
+
 /* each section can override opacity, blur and drift; unset values use the whole-track settings */
 const BGK = {bgOpacity:'opacity', bgBlur:'blur', bgDrift:'drift'};
 function adjFor(k){ const o=(S.bgAdj&&S.bgAdj[k])||{}; return {opacity: o.opacity ?? S.bgOpacity, blur: o.blur ?? S.bgBlur, drift: o.drift ?? S.bgDrift}; }
@@ -140,12 +188,17 @@ function bgFor(pose){ const k=['q','l','p'][Math.min(pose,2)]; const img=(S.bgSe
 const sameBg = (a,b)=> a && b && a.img===b.img && a.adj.opacity===b.adj.opacity && a.adj.blur===b.adj.blur && a.adj.drift===b.adj.drift;
 function drawBg(ctx,W,H,t,bg,mix){
   const alpha = bg.adj.opacity*mix; if(alpha<=0.002) return;
+  if(bg.img.proc){
+    ctx.save(); ctx.globalAlpha=alpha; if(bg.adj.blur>0) ctx.filter=`blur(${Math.min(W,H)*0.02*bg.adj.blur}px)`;
+    drawProc(ctx,W,H,t,bg.img.proc,bg.adj.drift); ctx.restore(); return;
+  }
   const im=blurredBg(bg.img, bg.adj.blur), d=bg.adj.drift, z=(1.08 + Math.sin(t*2*Math.PI/47)*0.03*d) * (1 + hitEnv(A&&A.kicks,t,0.2)*S.kick*0.006);
   const sc=Math.max(W/im.width, H/im.height)*z, px=Math.sin(t*2*Math.PI/71)*W*0.025*d, py=Math.cos(t*2*Math.PI/59)*H*0.015*d;
   ctx.globalAlpha=alpha; ctx.drawImage(im, W/2+px-im.width*sc/2, H/2+py-im.height*sc/2, im.width*sc, im.height*sc); ctx.globalAlpha=1;
 }
 const blurCache = new Map();
 function blurredBg(im, blur){
+  if(im && im.proc) return im.thumb;
   if(!blur) return im;
   let per=blurCache.get(im); if(!per){ per=new Map(); blurCache.set(im,per); }
   const key=Math.round(blur*100); if(per.has(key)) return per.get(key);
@@ -155,14 +208,14 @@ function blurredBg(im, blur){
   if(per.size>6) per.clear(); per.set(key,c); return c;
 }
 async function loadSecBgs(){
-  for(const k of ['q','l','p']){ const id=S.bgSec&&S.bgSec[k]; SECBG[k] = id ? await loadImage(`bg/${id}.jpg`) : null; }
+  for(const k of ['q','l','p']){ const id=S.bgSec&&S.bgSec[k]; SECBG[k] = id ? await loadBgSrc(id) : null; }
   showSecBgs(); requestDraw();
 }
 function showSecBgs(){ renderSlots(); }
 /* scene slots: whole track, quiet, lifted, peak. The selected slot receives the next background click. */
 function slotThumb(k){
-  if(k==='all'){ if(S.bgId) return `bg/thumbs/${S.bgId}.jpg`; if(IMGS.bg){ const c=document.createElement('canvas'); c.width=160; c.height=90; const x=c.getContext('2d'); const im=IMGS.bg, sc=Math.max(160/im.width,90/im.height); x.drawImage(im,80-im.width*sc/2,45-im.height*sc/2,im.width*sc,im.height*sc); return c.toDataURL('image/jpeg',0.7); } return ''; }
-  const id=S.bgSec&&S.bgSec[k]; return id ? `bg/thumbs/${id}.jpg` : '';
+  if(k==='all'){ if(S.bgId) return bgThumb(S.bgId); if(IMGS.bg){ const c=document.createElement('canvas'); c.width=160; c.height=90; const x=c.getContext('2d'); const im=IMGS.bg, sc=Math.max(160/im.width,90/im.height); x.drawImage(im,80-im.width*sc/2,45-im.height*sc/2,im.width*sc,im.height*sc); return c.toDataURL('image/jpeg',0.7); } return ''; }
+  const id=S.bgSec&&S.bgSec[k]; return id ? bgThumb(id) : '';
 }
 function showAdj(){
   const slot=$('bgTarget').value, a = slot==='all' ? {opacity:S.bgOpacity,blur:S.bgBlur,drift:S.bgDrift} : adjFor(slot);
@@ -196,8 +249,8 @@ document.querySelectorAll('.slot').forEach(b=>b.addEventListener('click', e=>{
 async function pickBg(id, fromUser){
   const it=BGLIB.find(b=>b.id===id); if(!it) return;
   const target = fromUser ? $('bgTarget').value : 'all';
-  if(target!=='all'){ S.bgSec = Object.assign({q:'',l:'',p:''}, S.bgSec, {[target]:id}); SECBG[target] = await loadImage(`bg/${id}.jpg`); markBg(); persist(); requestDraw(); return; }
-  IMGS.bg = await loadImage(`bg/${id}.jpg`); S.bgId=id; setNote('bg', `${it.set} · ${it.palette} · ${it.name}`);
+  if(target!=='all'){ S.bgSec = Object.assign({q:'',l:'',p:''}, S.bgSec, {[target]:id}); SECBG[target] = await loadBgSrc(id); markBg(); persist(); requestDraw(); return; }
+  IMGS.bg = await loadBgSrc(id); S.bgId=id; setNote('bg', `${it.set} · ${it.palette} · ${it.name}`);
   if(fromUser && S.bgMatch) matchBackground(); else persist();
   markBg(); requestDraw();
 }
@@ -206,16 +259,16 @@ function renderBgGrid(){
   const st=$('bgSet').value, pal=$('bgPal').value, g=$('bgGrid');
   g.innerHTML=''; BGLIB.filter(b=>(st==='all'||b.set===st)&&(pal==='all'||b.palette===pal)).forEach(b=>{
     const el=document.createElement('button'); el.type='button'; el.className='bgthumb'; el.dataset.id=b.id; el.title=`${b.set} · ${b.palette} · ${b.name}`;
-    el.innerHTML=`<img src="bg/thumbs/${b.id}.jpg" alt="${b.name}" loading="lazy">`; el.addEventListener('click',()=>pickBg(b.id,true)); g.appendChild(el); });
+    el.innerHTML=`<img src="${bgThumb(b.id)}" alt="${b.name}" loading="lazy">`; el.addEventListener('click',()=>pickBg(b.id,true)); g.appendChild(el); });
   markBg();
 }
-fetch('bg/index.json').then(r=>r.json()).then(list=>{ BGLIB=list; renderBgGrid(); if(S.bgId) pickBg(S.bgId,false); loadSecBgs(); }).catch(()=>{});
+fetch('bg/index.json').then(r=>r.json()).then(list=>{ BGLIB=PROCS.map(p=>({id:p.id,set:'animated',palette:'any',name:p.name})).concat(list); renderBgGrid(); if(S.bgId) pickBg(S.bgId,false); loadSecBgs(); }).catch(()=>{});
 $('clearSecBgs').addEventListener('click', ()=>{ S.bgSec={q:'',l:'',p:''}; loadSecBgs(); persist(); });
 $('bgSet').addEventListener('change', renderBgGrid); $('bgPal').addEventListener('change', renderBgGrid);
 $('bgMatch').addEventListener('change', e=>{ S.bgMatch=e.target.checked; persist(); });
 
 function matchBackground(){
-  const im=IMGS.bg; if(!im) return false;
+  const im=IMGS.bg; if(!im || im.proc) return false;   // animated scenes already use the look's colours
   const c=document.createElement('canvas'); c.width=160; c.height=90; const x=c.getContext('2d',{willReadFrequently:true});
   x.drawImage(im,0,0,160,90); const d=x.getImageData(0,0,160,90).data, px=[];
   for(let i=0;i<d.length;i+=4){ const r=d[i],g=d[i+1],b=d[i+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b);
