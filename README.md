@@ -39,11 +39,11 @@ This serves `public/` without the password gate.
 
 ## Roadmap
 
-Done: release groups with shared looks, group backup files, looks with artwork recolouring, background library (sets x palettes) with opacity, blur and drift, glitch layer (tearing, colour split, block shifts, VHS roll, section bursts), tabbed panel, section scenes, Spotify Canvas loops, dual-format renders, still presets (YouTube, Instagram 4:5, Story, square) with headline type, font choice (Google set or installed fonts).
+Done: release groups with shared looks and backup files; looks with artwork recolouring; background library (sets x palettes) with per-scene opacity, blur and drift; section scenes; motion and glitch per section; glitch layer; captions with tap to time and full styling; Spotify Canvas loops; dual-format renders; still presets with headline type; font choice; editor layout with timeline lanes.
 
 Next:
-0. Done: timed captions, tap to time, per-section motion. Ideas: Whisper draft captions in the browser (best on a vocal stem), word-by-word reveal, clickable timeline blocks.
-1. Section-aware scenes (done: backgrounds per quiet, lifted and peak). Still to do: per-section glitch level.
-2. Procedural scenes: time-of-day sky, halftone rays, record grooves, falling dashes.
-3. Per-group artwork (different mascot sets per group).
-4. More glitch: pixel-sort streaks, datamosh smear between scenes, mirrored/tiled world, floating repeated mascots.
+1. Clickable timeline blocks: click a scene block to open its slot, a caption block to edit that line.
+2. Whisper draft captions in the browser (best on a vocal stem); word-by-word caption reveal.
+3. Procedural scenes: time-of-day sky, halftone rays, record grooves, falling dashes.
+4. Per-group artwork (different mascot sets per group).
+5. More glitch: pixel-sort streaks, datamosh smear between scenes, mirrored/tiled world, floating repeated mascots.
