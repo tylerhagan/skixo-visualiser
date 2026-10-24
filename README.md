@@ -5,7 +5,7 @@ Audio-reactive visualiser for skixO releases. Drop in a track and artwork, tune 
 ## How it works
 
 - **Analysis** runs in the browser: the track is split into low and high bands to find kicks and hats, and its overall energy decides which pose shows when.
-- **Poses** are four frames: flat light, side light and an optional peak face, all with the closed-eye smile. Light changes fade slowly; the peak face (widest smile) cuts in on a kick at the biggest moments. Optional nod frames for each light make the head bob on the beat; only the head is taken from them and aligned over the base body.
+- **Poses** are up to three frames: flat light, side light and an optional peak face, all with the closed-eye smile. Light changes fade slowly; the peak face (widest smile) cuts in on a kick at the biggest moments. Optional nod frames for each light make the head bob on the beat; only the head is taken from them and aligned over the base body.
 - **Rendering** is stateless: every frame is a pure function of time, so the preview and the export match exactly. Export uses WebCodecs (H.264 + AAC) and `mp4-muxer`, so it needs Chrome or Edge.
 - **Memory**: settings live in localStorage; the last track and any artwork you drop in are kept in IndexedDB. Nothing leaves your browser.
 
