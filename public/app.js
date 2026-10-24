@@ -1198,7 +1198,7 @@ async function takeFile(file, slot){
     if(file.type.startsWith('image')){
       const nm = file.name.match(/nod[-_ ]?(side|flat|peak)[-_ ]?([12])/i);
       const s = slot || (nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /^(bg|scene|background)/i.test(file.name) ? 'bg' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
-      await setPose(s, file); store.put('img-'+s, file, file.name); if(s==='bg'){ S.bgId=''; markBg(); persist(); } if(s==='h') rebuildCues(); setStatus(`Loaded ${file.name}`);
+      await setPose(s, file); store.put(artKey(s), file, file.name); if(s==='bg'){ S.bgId=''; markBg(); persist(); } if(s==='h') rebuildCues(); setStatus(`Loaded ${file.name}`);
     }
   }catch(err){ setStatus(`Couldn't read ${file.name}. Try a WAV, MP3, PNG or JPG.`, true); }
 }
@@ -1376,6 +1376,7 @@ const esc = t => String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&
 async function openRelease(id){
   saveLib(); stop(); LIB.current = id;
   S = Object.assign({}, DEFAULTS, grp().shared, rel().own);
+  if(grp().id!==artGroup) await loadArtwork();
   syncUI(); setAspect(); refreshArt(); fillPickers(); persist(); if($('mslot')) showMotionSec(); if(S.bgId) pickBg(S.bgId,false); if(BGLIB.length) loadSecBgs();
   const a = await store.get('audio-'+id);
   if(a && a.blob){ setNote('audio', a.name); await loadAudio(a.blob); }
@@ -1526,21 +1527,34 @@ $('importFile').addEventListener('change', async e=>{
   e.target.value='';
 });
 
+/* ---------------- artwork per release group ----------------
+   Mascot frames you drop in are saved for the current group; groups without their own use the starter set. */
+const STARTER = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/peak-face.jpg', w:'assets/wallpaper.jpg',
+  n1f:'assets/nod-flat-1.jpg', n2f:'assets/nod-flat-2.jpg', n1c:'assets/nod-side-1.jpg', n2c:'assets/nod-side-2.jpg', n1p:'assets/nod-peak-1.jpg', n2p:'assets/nod-peak-2.jpg' };
+const ART_SLOTS = ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p'];
+const artKey = s => s==='bg' ? 'img-bg' : `img-${LIB ? grp().id : 'x'}-${s}`;
+let artGroup = null;
+async function loadArtwork(){
+  artGroup = LIB ? grp().id : null; const isFirst = LIB && LIB.groups[0].id===artGroup;
+  // a/b first so nod frames can align to them
+  for(const k of ['a','b','c', ...ART_SLOTS.filter(x=>!['a','b','c'].includes(x))]){
+    let saved = await store.get(artKey(k));
+    if((!saved || !saved.blob) && isFirst) saved = await store.get('img-'+k);   // files saved before groups had artwork
+    if(saved && saved.blob) await setPose(k, saved.blob, saved.name);
+    else if(STARTER[k]) await setPose(k, STARTER[k]);
+    else { if(k==='bg') continue; IMGS[k]=null; if(NOD_SLOTS.includes(k)) delete RAW[k]; setNote(k,'Empty'); }
+  }
+  rebuildCues();
+}
+
 /* ---------------- boot ---------------- */
 $('font').innerHTML = GFONTS.map(f=>`<option value="${f}">${f}</option>`).join('') + '<option value="custom">Installed font…</option>';
 syncUI(); bindUI(); setAspect(); markLook();
 (async ()=>{
   try{
-    const starter = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/peak-face.jpg', w:'assets/wallpaper.jpg',
-      n1f:'assets/nod-flat-1.jpg', n2f:'assets/nod-flat-2.jpg', n1c:'assets/nod-side-1.jpg', n2c:'assets/nod-side-2.jpg',
-      n1p:'assets/nod-peak-1.jpg', n2p:'assets/nod-peak-2.jpg' };
-    await Promise.all(['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p'].map(async k=>{
-      const saved = await store.get('img-'+k);
-      if(saved && saved.blob) return setPose(k, saved.blob, saved.name);
-      if(starter[k]) return setPose(k, starter[k]);
-    }).concat([document.fonts.load('500 20px "Libre Franklin"').catch(()=>{}), loadWordmark()]));
+    await Promise.all([document.fonts.load('500 20px "Libre Franklin"').catch(()=>{}), loadWordmark()]);
     makeClouds(S.blue); requestDraw();
-    await loadLibrary(); refreshArt(); $('fontCustomRow').hidden = S.font!=='custom'; ensureFont(); if(S.bgId && BGLIB.length) pickBg(S.bgId,false);
+    await loadLibrary(); await loadArtwork(); refreshArt(); $('fontCustomRow').hidden = S.font!=='custom'; ensureFont(); if(S.bgId && BGLIB.length) pickBg(S.bgId,false);
     const track = await store.get('audio-'+LIB.current);
     if(track && track.blob){ $('trackName').textContent = track.name; setNote('audio', track.name); await loadAudio(track.blob); }
     else setStatus('Drop a track anywhere to start');

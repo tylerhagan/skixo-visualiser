@@ -39,11 +39,9 @@ This serves `public/` without the password gate.
 
 ## Roadmap
 
-Done: release groups with shared looks and backup files; looks with artwork recolouring; background library (sets x palettes) with per-scene opacity, blur and drift; section scenes; motion and glitch per section; glitch layer; captions with tap to time and full styling; Spotify Canvas loops; dual-format renders; still presets with headline type; font choice; editor layout with timeline lanes.
+Done: release groups with shared looks, artwork per group and backup files; looks with artwork recolouring; background library (sets x palettes) plus animated scenes (time-of-day sky, halftone rays, record grooves, falling dashes) with per-scene opacity, blur and drift; section scenes; motion and glitch per section; glitch layer (tearing, colour split, block shifts, VHS roll, pixel sort, datamosh at changes, mirror world, floating echoes); captions with tap to time, word-by-word reveal, full styling and a Whisper draft (beta); Spotify Canvas loops; dual-format renders; still presets with headline type; font choice; editor layout with clickable timeline lanes.
 
-Next:
-1. Clickable timeline blocks: click a scene block to open its slot, a caption block to edit that line.
-2. Whisper draft captions in the browser (best on a vocal stem); word-by-word caption reveal.
-3. Procedural scenes: time-of-day sky, halftone rays, record grooves, falling dashes.
-4. Per-group artwork (different mascot sets per group).
-5. More glitch: pixel-sort streaks, datamosh smear between scenes, mirrored/tiled world, floating repeated mascots.
+Ideas:
+- Public case study page at /case-study outside the password gate (for the portfolio concept card)
+- Per-group artwork export inside group backup files
+- Whisper word timings feeding the word-by-word reveal
