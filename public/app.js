@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', useWordmark:false, lowercase:true,
-  bgDrift:0.5, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, bgOpacity:1, bgBlur:0, bgId:'', bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[
@@ -24,7 +24,7 @@ const SLIDERS = {
     ['fadeIn','Fade in (s)',0,10,0.1],['fadeOut','Fade out (s)',0,10,0.1]],
   'g-atmos':[
     ['dashes','Glitch dashes',0,1,0.01],['dashSpeed','Dash speed',0,1,0.01],['clouds','Clouds',0,1,0.01],
-    ['cloudSpeed','Cloud drift',0,1,0.01],['bgDrift','Background drift',0,1,0.01],['light','Window light',0,1,0.01],['grain','Print grain',0,1,0.01],['vignette','Vignette',0,1,0.01]]
+    ['cloudSpeed','Cloud drift',0,1,0.01],['bgDrift','Background drift',0,1,0.01],['bgOpacity','Background opacity',0,1,0.01],['bgBlur','Background blur',0,1,0.01],['light','Window light',0,1,0.01],['grain','Print grain',0,1,0.01],['vignette','Vignette',0,1,0.01]]
 };
 let S = Object.assign({}, DEFAULTS);
 try{ const saved = JSON.parse(localStorage.getItem('skixo-vis-settings')||'null'); if(saved) S = Object.assign({}, DEFAULTS, saved); }catch(e){}
@@ -46,7 +46,7 @@ const fmtVal = v => (Math.abs(v)>=10? v.toFixed(0) : (+v).toFixed(2).replace(/0$
 function syncUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
   for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge']) $(k).value = S[k];
-  $('useWordmark').checked = S.useWordmark; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
+  $('useWordmark').checked = S.useWordmark; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
 function bindUI(){
@@ -117,6 +117,34 @@ function tintCanvas(bmp){
 }
 /* Match look to background: paper from the lightest tones, ink from the darkest,
    accent from the most saturated mid-tones. Sets a custom look and recolours the art to suit. */
+/* background library: bg/index.json lists set, palette and name for each bundled scene */
+let BGLIB=[], bgBlurCache=null;
+function blurredBg(){
+  const im=IMGS.bg; if(!S.bgBlur) return im;
+  if(bgBlurCache && bgBlurCache.im===im && bgBlurCache.b===S.bgBlur) return bgBlurCache.c;
+  const pad=Math.round(Math.min(im.width,im.height)*0.04*S.bgBlur)*2;
+  const c=document.createElement('canvas'); c.width=im.width; c.height=im.height; const x=c.getContext('2d');
+  x.filter=`blur(${pad/2}px)`; x.drawImage(im,-pad,-pad,im.width+pad*2,im.height+pad*2);
+  bgBlurCache={im, b:S.bgBlur, c}; return c;
+}
+async function pickBg(id, fromUser){
+  const it=BGLIB.find(b=>b.id===id); if(!it) return;
+  IMGS.bg = await loadImage(`bg/${id}.jpg`); S.bgId=id; setNote('bg', `${it.set} · ${it.palette} · ${it.name}`);
+  if(fromUser && S.bgMatch) matchBackground(); else persist();
+  markBg(); requestDraw();
+}
+function markBg(){ document.querySelectorAll('.bgthumb').forEach(b=>b.setAttribute('aria-pressed', b.dataset.id===S.bgId)); }
+function renderBgGrid(){
+  const st=$('bgSet').value, pal=$('bgPal').value, g=$('bgGrid');
+  g.innerHTML=''; BGLIB.filter(b=>(st==='all'||b.set===st)&&(pal==='all'||b.palette===pal)).forEach(b=>{
+    const el=document.createElement('button'); el.type='button'; el.className='bgthumb'; el.dataset.id=b.id; el.title=`${b.set} · ${b.palette} · ${b.name}`;
+    el.innerHTML=`<img src="bg/thumbs/${b.id}.jpg" alt="${b.name}" loading="lazy">`; el.addEventListener('click',()=>pickBg(b.id,true)); g.appendChild(el); });
+  markBg();
+}
+fetch('bg/index.json').then(r=>r.json()).then(list=>{ BGLIB=list; renderBgGrid(); if(S.bgId) pickBg(S.bgId,false); }).catch(()=>{});
+$('bgSet').addEventListener('change', renderBgGrid); $('bgPal').addEventListener('change', renderBgGrid);
+$('bgMatch').addEventListener('change', e=>{ S.bgMatch=e.target.checked; persist(); });
+
 function matchBackground(){
   const im=IMGS.bg; if(!im) return false;
   const c=document.createElement('canvas'); c.width=160; c.height=90; const x=c.getContext('2d',{willReadFrequently:true});
@@ -537,10 +565,13 @@ function frame(ctx, W, H, t){
   ctx.fillStyle = S.paperCol; ctx.fillRect(0,0,W,H);
   if(IMGS.bg && S.layout!=='wallpaper'){
     // background scene: cover-fit with a slow drift and breathing zoom
-    const im=IMGS.bg, d=S.bgDrift, z=(1.08 + Math.sin(t*2*Math.PI/47)*0.03*d) * (1 + hitEnv(A&&A.kicks,t,0.2)*S.kick*0.006);
+    const im=blurredBg(), d=S.bgDrift;
+    ctx.globalAlpha=S.bgOpacity;
+    const _z0=0, z=(1.08 + Math.sin(t*2*Math.PI/47)*0.03*d) * (1 + hitEnv(A&&A.kicks,t,0.2)*S.kick*0.006);
     const sc=Math.max(W/im.width, H/im.height)*z;
     const px=Math.sin(t*2*Math.PI/71)*W*0.025*d, py=Math.cos(t*2*Math.PI/59)*H*0.015*d;
     ctx.drawImage(im, W/2+px-im.width*sc/2, H/2+py-im.height*sc/2, im.width*sc, im.height*sc);
+    ctx.globalAlpha=1;
   }
 
   // badge geometry
@@ -794,7 +825,7 @@ async function takeFile(file, slot){
     if(file.type.startsWith('image')){
       const nm = file.name.match(/nod[-_ ]?(side|flat|peak)[-_ ]?([12])/i);
       const s = slot || (nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /^(bg|scene|background)/i.test(file.name) ? 'bg' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
-      await setPose(s, file); store.put('img-'+s, file, file.name); if(s==='h') rebuildCues(); setStatus(`Loaded ${file.name}`);
+      await setPose(s, file); store.put('img-'+s, file, file.name); if(s==='bg'){ S.bgId=''; markBg(); persist(); } if(s==='h') rebuildCues(); setStatus(`Loaded ${file.name}`);
     }
   }catch(err){ setStatus(`Couldn't read ${file.name}. Try a WAV, MP3, PNG or JPG.`, true); }
 }
@@ -924,13 +955,13 @@ const store = (()=>{
   };
 })();
 $('matchBg').addEventListener('click', ()=>{ if(!matchBackground()) setStatus('Load a background first, then match.'); });
-$('clearBg').addEventListener('click', async ()=>{ IMGS.bg=null; await store.put('img-bg', null, ''); setNote('bg','Empty'); requestDraw(); });
+$('clearBg').addEventListener('click', async ()=>{ IMGS.bg=null; S.bgId=''; markBg(); persist(); await store.put('img-bg', null, ''); setNote('bg','Empty'); requestDraw(); });
 $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setStatus('Saved files forgotten. Reload to return to the starter artwork.'); });
 
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','bgDrift','light','grain','vignette','artist','textPos','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','bgDrift','bgOpacity','bgBlur','bgId','light','grain','vignette','artist','textPos','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
@@ -949,7 +980,7 @@ const esc = t => String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&
 async function openRelease(id){
   saveLib(); stop(); LIB.current = id;
   S = Object.assign({}, DEFAULTS, grp().shared, rel().own);
-  syncUI(); setAspect(); refreshArt(); fillPickers(); persist();
+  syncUI(); setAspect(); refreshArt(); fillPickers(); persist(); if(S.bgId) pickBg(S.bgId,false);
   const a = await store.get('audio-'+id);
   if(a && a.blob){ setNote('audio', a.name); await loadAudio(a.blob); }
   else { buffer=null; A=null; CUES=[]; KEYS=[]; playhead=12; $('play').disabled=true; $('export').disabled=true; setNote('audio','None yet'); drawTimeline(); setStatus('Drop a track for this release'); requestDraw(); }
@@ -988,7 +1019,7 @@ syncUI(); bindUI(); setAspect(); markLook();
       if(starter[k]) return setPose(k, starter[k]);
     }).concat([document.fonts.load('500 20px "Libre Franklin"').catch(()=>{}), loadWordmark()]));
     makeClouds(S.blue); requestDraw();
-    await loadLibrary(); refreshArt();
+    await loadLibrary(); refreshArt(); if(S.bgId && BGLIB.length) pickBg(S.bgId,false);
     const track = await store.get('audio-'+LIB.current);
     if(track && track.blob){ $('trackName').textContent = track.name; setNote('audio', track.name); await loadAudio(track.blob); }
     else setStatus('Drop a track anywhere to start');

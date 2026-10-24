@@ -53,6 +53,10 @@
           <div class="file"><label for="f-h">In-between</label><input type="file" id="f-h" accept="image/*"></div>
           <div class="file"><label for="f-bg">Background</label><input type="file" id="f-bg" accept="image/*"></div>
           <div class="file"><label for="f-w">Wide scene</label><input type="file" id="f-w" accept="image/*"></div>
+          <div class="row wide"><label for="bgSet">Scenes</label><select id="bgSet"><option value="all">All sets</option><option value="wistful">Wistful</option><option value="surreal">Surreal</option><option value="glitch">Glitch</option></select></div>
+          <div class="row wide"><label for="bgPal">Palette</label><select id="bgPal"><option value="all">All palettes</option><option value="dusk">Dusk</option><option value="night">Night</option><option value="riso">Riso red</option><option value="sage">Sage</option></select></div>
+          <div class="bggrid" id="bgGrid"></div>
+          <div class="row wide"><label for="bgMatch">Match look</label><input type="checkbox" id="bgMatch"></div>
           <div class="btns"><button id="matchBg">Match look to background</button><button id="clearBg">Remove background</button></div>
         </div>
         <div class="row wide"><label for="layout">Layout</label><select id="layout"><option value="badge">Badge on paper</option><option value="close">Close-up</option><option value="wallpaper">Wide scene (still image)</option></select></div>
@@ -124,7 +128,7 @@
         <div class="row wide"><label for="edge">Edge</label><select id="edge"><option value="auto">Auto (crisp on dark paper)</option><option value="soft">Soft</option><option value="ring">Crisp ring</option><option value="trim">Trimmed</option></select></div>
         <div class="row wide"><label for="ink">Ink</label><input type="color" id="ink"></div>
         <div class="row wide"><label for="blue">Blue</label><input type="color" id="blue"></div>
-        <div class="row wide"><label for="paperCol">Paper</label><input type="color" id="paperCol"></div>
+        <div class="row wide"><label for="paperCol">Paper / background</label><input type="color" id="paperCol"></div>
         <div class="btns"><button id="paperAuto">Match paper to artwork</button></div>
       </div>
     </details>
