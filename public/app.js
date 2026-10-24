@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
-  bgDrift:0.5, glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', capPos:'bottom', capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', capPos:'bottom', capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[['poseLow','Side light at',0,1,0.01],['peakCount','Peak moments',0,4,1],['poseHold','Hold (s)',1,30,0.5]],
@@ -52,7 +52,12 @@ function syncUI(){
 }
 function bindUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){
-    $(k).addEventListener('input', e=>{ S[k] = +e.target.value; $(k+'-o').textContent = fmtVal(S[k]); onChange(k); });
+    $(k).addEventListener('input', e=>{
+      const v=+e.target.value, slot=$('bgTarget') && $('bgTarget').value;
+      if(BGK[k] && slot && slot!=='all'){ S.bgAdj=Object.assign({q:null,l:null,p:null},S.bgAdj); S.bgAdj[slot]=Object.assign({},S.bgAdj[slot],{[BGK[k]]:v}); showAdj(); }
+      else S[k] = v;
+      $(k+'-o').textContent = fmtVal(v); onChange(k);
+    });
   }
   for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
@@ -66,6 +71,7 @@ function onChange(k){
   }
   if(k==='aspect') setAspect();
   if(k==='captions' && A) drawTimeline();
+  if(BGK[k] && A) drawTimeline();
   if(k==='font' || k==='fontCustom'){ $('fontCustomRow').hidden = S.font!=='custom'; ensureFont(); }
   if(k==='edge' || (k==='paperCol' && (S.edge||'auto')==='auto')) refreshArt();
   if(k==='bpm' && A){ A.grid = beatGrid(); showGrid(); }
@@ -123,21 +129,26 @@ function tintCanvas(bmp){
 /* background library: bg/index.json lists set, palette and name for each bundled scene */
 let BGLIB=[];
 const SECBG = {};   // section key -> bitmap
-function bgFor(pose){ const k=['q','l','p'][Math.min(pose,2)]; return (S.bgSec && S.bgSec[k] && SECBG[k]) || IMGS.bg; }
-function drawBg(ctx,W,H,t,img,alpha){
-  if(alpha<=0.002) return;
-  const im=blurredBg(img), d=S.bgDrift, z=(1.08 + Math.sin(t*2*Math.PI/47)*0.03*d) * (1 + hitEnv(A&&A.kicks,t,0.2)*S.kick*0.006);
+/* each section can override opacity, blur and drift; unset values use the whole-track settings */
+const BGK = {bgOpacity:'opacity', bgBlur:'blur', bgDrift:'drift'};
+function adjFor(k){ const o=(S.bgAdj&&S.bgAdj[k])||{}; return {opacity: o.opacity ?? S.bgOpacity, blur: o.blur ?? S.bgBlur, drift: o.drift ?? S.bgDrift}; }
+function bgFor(pose){ const k=['q','l','p'][Math.min(pose,2)]; const img=(S.bgSec && S.bgSec[k] && SECBG[k]) || IMGS.bg; return img ? {img, adj:adjFor(k)} : null; }
+const sameBg = (a,b)=> a && b && a.img===b.img && a.adj.opacity===b.adj.opacity && a.adj.blur===b.adj.blur && a.adj.drift===b.adj.drift;
+function drawBg(ctx,W,H,t,bg,mix){
+  const alpha = bg.adj.opacity*mix; if(alpha<=0.002) return;
+  const im=blurredBg(bg.img, bg.adj.blur), d=bg.adj.drift, z=(1.08 + Math.sin(t*2*Math.PI/47)*0.03*d) * (1 + hitEnv(A&&A.kicks,t,0.2)*S.kick*0.006);
   const sc=Math.max(W/im.width, H/im.height)*z, px=Math.sin(t*2*Math.PI/71)*W*0.025*d, py=Math.cos(t*2*Math.PI/59)*H*0.015*d;
   ctx.globalAlpha=alpha; ctx.drawImage(im, W/2+px-im.width*sc/2, H/2+py-im.height*sc/2, im.width*sc, im.height*sc); ctx.globalAlpha=1;
 }
 const blurCache = new Map();
-function blurredBg(im){
-  if(!S.bgBlur) return im;
-  const hit=blurCache.get(im); if(hit && hit.b===S.bgBlur) return hit.c;
-  const pad=Math.round(Math.min(im.width,im.height)*0.04*S.bgBlur)*2;
+function blurredBg(im, blur){
+  if(!blur) return im;
+  let per=blurCache.get(im); if(!per){ per=new Map(); blurCache.set(im,per); }
+  const key=Math.round(blur*100); if(per.has(key)) return per.get(key);
+  const pad=Math.round(Math.min(im.width,im.height)*0.04*blur)*2;
   const c=document.createElement('canvas'); c.width=im.width; c.height=im.height; const x=c.getContext('2d');
   x.filter=`blur(${pad/2}px)`; x.drawImage(im,-pad,-pad,im.width+pad*2,im.height+pad*2);
-  blurCache.set(im,{b:S.bgBlur, c}); return c;
+  if(per.size>6) per.clear(); per.set(key,c); return c;
 }
 async function loadSecBgs(){
   for(const k of ['q','l','p']){ const id=S.bgSec&&S.bgSec[k]; SECBG[k] = id ? await loadImage(`bg/${id}.jpg`) : null; }
@@ -149,7 +160,17 @@ function slotThumb(k){
   if(k==='all'){ if(S.bgId) return `bg/thumbs/${S.bgId}.jpg`; if(IMGS.bg){ const c=document.createElement('canvas'); c.width=160; c.height=90; const x=c.getContext('2d'); const im=IMGS.bg, sc=Math.max(160/im.width,90/im.height); x.drawImage(im,80-im.width*sc/2,45-im.height*sc/2,im.width*sc,im.height*sc); return c.toDataURL('image/jpeg',0.7); } return ''; }
   const id=S.bgSec&&S.bgSec[k]; return id ? `bg/thumbs/${id}.jpg` : '';
 }
+function showAdj(){
+  const slot=$('bgTarget').value, a = slot==='all' ? {opacity:S.bgOpacity,blur:S.bgBlur,drift:S.bgDrift} : adjFor(slot);
+  for(const [k,f] of Object.entries(BGK)){ $(k).value=a[f]; $(k+'-o').textContent=fmtVal(+a[f]); }
+  const own = slot!=='all' && S.bgAdj && S.bgAdj[slot];
+  const names={all:'the whole track',q:'quiet sections',l:'lifted sections',p:'peak moments'};
+  $('adjNote').innerHTML = slot==='all' ? 'Adjusting <b>the whole track</b> (the default for every slot).' :
+    `Adjusting <b>${names[slot]}</b> only.` + (own ? ' <button type="button" class="linkbtn" id="adjReset">Use whole-track settings</button>' : ' Currently using the whole-track settings.');
+  const r=$('adjReset'); if(r) r.onclick=()=>{ S.bgAdj[slot]=null; persist(); showAdj(); requestDraw(); if(A) drawTimeline(); };
+}
 function renderSlots(){
+  if($('adjNote')) showAdj();
   if(typeof drawTimeline==='function' && A) drawTimeline();
   const cur=$('bgTarget').value;
   document.querySelectorAll('.slot').forEach(b=>{
@@ -613,8 +634,8 @@ function frame(ctx, W, H, t){
   if(S.layout!=='wallpaper'){
     // background scenes: one for the whole track, or one each for quiet, lifted and peak sections
     const ps0 = poseState(t), a = bgFor(ps0.from), b = bgFor(ps0.to);
-    if(a && a===b) drawBg(ctx,W,H,t,a,S.bgOpacity);
-    else { if(a) drawBg(ctx,W,H,t,a,S.bgOpacity*(1-ps0.mix)); if(b) drawBg(ctx,W,H,t,b,S.bgOpacity*ps0.mix); }
+    if(sameBg(a,b)) drawBg(ctx,W,H,t,a,1);
+    else { if(a) drawBg(ctx,W,H,t,a,1-ps0.mix); if(b) drawBg(ctx,W,H,t,b,ps0.mix); }
   }
 
   // badge geometry
@@ -965,7 +986,7 @@ function drawTimeline(){
     x.fillStyle='#8e938f'; x.fillText(name, 4, y+lh/2);
     if(name==='Scene'){
       for(let i=0;i<CUES.length;i++){
-        const a=X(CUES[i].t), b=X(i+1<CUES.length?CUES[i+1].t:dur), im=bgFor(CUES[i].p);
+        const a=X(CUES[i].t), b=X(i+1<CUES.length?CUES[i+1].t:dur), bgx=bgFor(CUES[i].p), im=bgx&&blurredBg(bgx.img,bgx.adj.blur);
         x.save(); x.beginPath(); x.rect(a+0.5,y,b-a-1,lh); x.clip();
         if(im){ const sc=Math.max((b-a)/im.width, lh/im.height); x.drawImage(im, (a+b)/2-im.width*sc/2, y+lh/2-im.height*sc/2, im.width*sc, im.height*sc); }
         else { x.fillStyle=S.paperCol; x.fillRect(a,y,b-a,lh); }
@@ -1166,7 +1187,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','bgSec','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
