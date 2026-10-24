@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
-  bgDrift:0.5, bgColour:'', glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capStyle:'outline', capColour:'ink', capWeight:'500', capCase:'typed', capAnim:'fade', capSpacing:0, capIn:0.25, capOut:0.3, capHold:6, capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, bgColour:'', glitch:0, gSort:0, gMosh:0, gMirror:0, echo:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capStyle:'outline', capColour:'ink', capWeight:'500', capCase:'typed', capAnim:'fade', capSpacing:0, capIn:0.25, capOut:0.3, capHold:6, capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[['poseLow','Side light at',0,1,0.01],['peakCount','Peak moments',0,4,1],['poseHold','Hold (s)',1,30,0.5]],
@@ -22,7 +22,8 @@ const SLIDERS = {
   'g-typeS':[['textScale','Text size',0.5,2.5,0.05]],
   'g-caps':[['capSize','Size',0.5,2.5,0.05],['capSpacing','Letter spacing',-0.05,0.3,0.01],['capIn','Fade in (s)',0,1.5,0.05],['capOut','Fade out (s)',0,1.5,0.05],['capHold','Max hold (s)',1,15,0.5]],
   'g-glitch':[['glitch','Glitch amount',0,1,0.01],
-    ['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],['glitchBlocks','Block shifts',0,1,0.01],['glitchRoll','VHS roll',0,1,0.01]],
+    ['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],['glitchBlocks','Block shifts',0,1,0.01],['glitchRoll','VHS roll',0,1,0.01],
+    ['gSort','Pixel sort',0,1,0.01],['gMosh','Datamosh at changes',0,1,0.01],['gMirror','Mirror world',0,1,0.01],['echo','Floating echoes',0,1,0.01]],
   'g-atmos':[['dashes','Glitch dashes',0,1,0.01],['dashSpeed','Dash speed',0,1,0.01],['clouds','Clouds',0,1,0.01],['cloudSpeed','Cloud drift',0,1,0.01],
     ['light','Window light',0,1,0.01],['grain','Print grain',0,1,0.01],['vignette','Vignette',0,1,0.01]]
 };
@@ -625,7 +626,7 @@ function spectrumAt(t){
 /* ---------------- the frame ---------------- */
 /* Motion settings can differ per section (quiet / lifted / peak). For each frame the effective
    settings are the defaults with that section's overrides, blended across section changes. */
-const MKEYS = ['breathe','kick','sway','rings','spectrum','misprint','nod','glitch','glitchTear','glitchSplit','glitchBlocks','glitchRoll'];
+const MKEYS = ['breathe','kick','sway','rings','spectrum','misprint','nod','glitch','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo'];
 const SECK = ['q','l','p'];
 function motionAt(t){
   const m=S.mAdj; if(!m || !(Object.keys(m.q||{}).length||Object.keys(m.l||{}).length||Object.keys(m.p||{}).length)) return S;
@@ -699,6 +700,16 @@ function frameInner(ctx, W, H, t){
     const ps = poseState(t), imgs=[IMGS.a,IMGS.b,IMGS.c,IMGS.h||IMGS.b];
     let base = imgs[ps.from]||IMGS.a, top = imgs[ps.to]||IMGS.a;
     if(ps.mix>=1){ const nf = nodFrame(t, ps.to); if(nf){ base = nf; top = nf; } }
+    if(S.echo>0.01 && top){   // floating echoes of the mascot, drifting outwards and fading
+      const n=Math.round(3+S.echo*7), kk=hitEnv(A&&A.kicks,t,0.25);
+      for(let i=0;i<n;i++){
+        const life=9, ph=((t/life + hash(i*17+3)) % 1), ang=hash(i*29+5)*Math.PI*2 + t*0.05*(hash(i)-0.5);
+        const dist=size*(0.45+ph*0.9), es=size*(0.16+hash(i*7)*0.16)*(1+kk*0.1);
+        ctx.globalAlpha=S.echo*0.55*Math.sin(ph*Math.PI);
+        ctx.drawImage(top, cx+Math.cos(ang)*dist*(W>H?1.4:0.8)-es/2, cy+Math.sin(ang)*dist*0.8-es/2, es, es);
+      }
+      ctx.globalAlpha=1;
+    }
     ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot); ctx.scale(scale,scale);
     if(base){
       // soft shadow on the paper
@@ -719,7 +730,7 @@ function frameInner(ctx, W, H, t){
 
   drawText(ctx,W,H,U,tall,t);
   if(!RENDER_STILL) drawCaption(ctx,W,H,U,t);
-  if(S.glitch>0) glitchFX(ctx,W,H,U,t);
+  if(S.glitch>0 || S.gMosh>0) glitchFX(ctx,W,H,U,t);
 
   // texture
   ctx.globalCompositeOperation='multiply'; ctx.globalAlpha=1; ctx.drawImage(overlay(W,H),0,0);
@@ -749,7 +760,30 @@ function glitchLevel(t){
   for(const c of CUES){ const a=t-c.t; if(a>=0 && a<0.45) g=Math.max(g, 1.4*(1-a/0.45)); }   // burst at section changes
   return Math.min(1.6, g*S.glitch);
 }
+let MOSH_BUSY=false; const moshCache={};
+function moshFX(ctx,W,H,U,t){
+  if(MOSH_BUSY || !(S.gMosh>0) || !CUES.length) return;
+  let c=null; for(const q of CUES){ const a=t-q.t; if(q.t>0 && a>=0 && a<0.9) c=q; }
+  if(!c) return;
+  const age=(t-c.t)/0.9, key=c.t+'|'+W+'x'+H;
+  if(!moshCache[key]){   // the last frame before the change, rendered once
+    const pc=document.createElement('canvas'); pc.width=W; pc.height=H; MOSH_BUSY=true;
+    try{ frame(pc.getContext('2d'),W,H,Math.max(0,c.t-0.05)); } finally { MOSH_BUSY=false; }
+    for(const k in moshCache) if(k.endsWith('|'+W+'x'+H)) delete moshCache[k];
+    moshCache[key]=pc;
+  }
+  const prev=moshCache[key], bw=Math.ceil(W/24), bh=Math.ceil(H/14), f=Math.floor(t*24);
+  ctx.save(); ctx.globalCompositeOperation='source-over';
+  for(let by=0;by<14;by++) for(let bx=0;bx<24;bx++){
+    const r=hash(bx*131+by*977+Math.floor(c.t*10));
+    if(r > S.gMosh*(1-age)*0.9) continue;      // fewer old blocks survive as the change settles
+    const dx=(hash(bx*7+by*3+f)-0.5)*U*0.02*age*8, dy=(hash(bx*5+by*11)-0.4)*U*0.03*age*6;
+    ctx.drawImage(prev, bx*bw, by*bh, bw, bh, bx*bw+dx, by*bh+dy, bw, bh);
+  }
+  ctx.restore();
+}
 function glitchFX(ctx,W,H,U,t){
+  moshFX(ctx,W,H,U,t);
   const g = glitchLevel(t); if(g<0.06) return;
   const f = Math.floor(t*24), R = k=>hash(f*131+k);
   const src = glScratch('src',W,H), sx=src.getContext('2d'); sx.globalCompositeOperation='copy'; sx.drawImage(ctx.canvas,0,0);
@@ -776,6 +810,22 @@ function glitchFX(ctx,W,H,U,t){
       const c = glScratch('ch'+sign,W,H), x=c.getContext('2d');
       x.globalCompositeOperation='copy'; x.drawImage(base,0,0); x.globalCompositeOperation='multiply'; x.fillStyle=col; x.fillRect(0,0,W,H);
       if(sign>0){ ctx.globalCompositeOperation='copy'; ctx.drawImage(c, d,0); } else { ctx.globalCompositeOperation='lighter'; ctx.drawImage(c, -d, d*0.3); }
+    }
+  }
+  if(S.gSort>0){   // pixel-sort streaks: thin slices dragged downwards
+    const n=Math.round(60*g*S.gSort);
+    for(let i=0;i<n;i++){ const x=R(300+i)*W, w=Math.max(1,(0.002+R(330+i)*0.008)*W), y0=R(360+i)*H*0.8, len=(0.05+R(390+i)*0.35)*H*g;
+      ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=0.85; ctx.drawImage(src, x,y0,w,1, x,y0,w,len); }
+    ctx.globalAlpha=1;
+  }
+  if(S.gMirror>0 && A && A.grid){   // mirror world: the frame folds into symmetry for a beat at a time
+    const beat=Math.floor((t-A.grid.phase)/A.grid.beat);
+    if(g>0.5 && hash(beat*97+11) < S.gMirror*0.6){
+      const sx2=src.getContext('2d'); sx2.globalCompositeOperation='copy'; sx2.drawImage(ctx.canvas,0,0);
+      ctx.globalCompositeOperation='source-over'; ctx.save();
+      if(hash(beat*13)<0.65){ ctx.translate(W,0); ctx.scale(-1,1); ctx.drawImage(src, 0,0,W/2,H, 0,0,W/2,H); }
+      else { ctx.translate(0,H); ctx.scale(1,-1); ctx.drawImage(src, 0,0,W,H/2, 0,0,W,H/2); }
+      ctx.restore(); ctx.globalCompositeOperation='source-over';
     }
   }
   ctx.globalCompositeOperation='multiply'; ctx.globalAlpha=Math.min(0.5,0.35*g);   // scanlines
@@ -1243,7 +1293,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
