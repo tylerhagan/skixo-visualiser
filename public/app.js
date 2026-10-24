@@ -7,7 +7,7 @@ const DEFAULTS = {
   rings:0.45, misprint:0.3, spectrum:0.4,
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
-  title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', useWordmark:false, lowercase:true,
+  title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
   bgDrift:0.5, glitch:0, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
@@ -50,7 +50,7 @@ const fmtVal = v => (Math.abs(v)>=10? v.toFixed(0) : (+v).toFixed(2).replace(/0$
 function syncUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
   for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom']) $(k).value = S[k];
-  $('useWordmark').checked = S.useWordmark; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
+  $('useWordmark').checked = S.useWordmark; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
 function bindUI(){
@@ -60,7 +60,7 @@ function bindUI(){
   for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
-  for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
+  for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
 }
 function onChange(k){
   if(k==='poseMode'){
@@ -797,15 +797,16 @@ async function ensureFont(){
   requestDraw();
 }
 function drawHeadline(ctx,W,H,U,mode){
-  const lc = s => S.lowercase ? s.toLowerCase() : s;
-  const title = S.showTitle===false ? '' : lc((RENDER_STILL && S.stillHeadline) || S.title || '');
+  const lc = s => S.lowercase ? s.toLowerCase().replace(/skixo/g,'skixO') : s;
+  const typed = RENDER_STILL && S.stillHeadline;   // a typed headline keeps its own case
+  const title = S.showTitle===false && !typed ? '' : (typed ? S.stillHeadline : lc(S.title || ''));
   const sc = S.textScale||1; let ts = U*0.17*sc;
   ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
   const font = px => `600 ${px}px ${FONT()}`;
   ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`;
   while(ts>U*0.04 && ctx.measureText(title).width > W*0.9){ ts*=0.92; ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`; }
   const y = mode==='headline-top' ? H*0.16 : mode==='headline-bottom' ? H*0.82 : H*0.5;
-  const as = ts*0.3, showA = S.showArtist!==false;
+  const as = ts*0.3, showA = RENDER_STILL ? !!S.stillArtist : S.showArtist!==false;
   const stroke=(txt,x,yy,w)=>{ ctx.strokeStyle=S.paperCol; ctx.lineWidth=w; ctx.strokeText(txt,x,yy); ctx.fillText(txt,x,yy); };
   ctx.fillStyle=S.ink;
   if(title) stroke(title, W/2, y, ts*0.16);
@@ -822,8 +823,8 @@ function drawText(ctx,W,H,U,tall,t){
   const mode = (RENDER_STILL && S.stillText!=='same') ? S.stillText : S.textPos;
   if(mode==='off' || mode==='none') return;
   if(mode.startsWith('headline')) return drawHeadline(ctx,W,H,U,mode);
-  const lc = s => S.lowercase ? s.toLowerCase() : s;
-  const showA = S.showArtist!==false;
+  const lc = s => S.lowercase ? s.toLowerCase().replace(/skixo/g,'skixO') : s;
+  const showA = RENDER_STILL ? !!S.stillArtist : S.showArtist!==false;
   const title = S.showTitle===false ? '' : lc(S.title||''), artist = showA ? (S.artist||'') : '', credit = S.credit||'';
   const m = U*0.065;
   let x, y, align;
@@ -865,9 +866,11 @@ function drawText(ctx,W,H,U,tall,t){
 /* ---------------- preview loop ---------------- */
 const stage = $('stage'), sctx = stage.getContext('2d');
 let playing=false, playhead=12, srcNode=null, startedAt=0, drawPending=false;
+const STILL_DIMS = {yt:[1920,1080], ig:[1080,1350], story:[1080,1920], square:[1080,1080]};
 function setAspect(){
   const tall = S.aspect==='9:16';
   stage.width = tall?720:1280; stage.height = tall?1280:720;
+  if($('stillPreview') && $('stillPreview').checked){ const [w,h]=STILL_DIMS[$('stillSize').value]; const k=Math.min(1280/w,1280/h); stage.width=Math.round(w*k); stage.height=Math.round(h*k); }
   $('stagewrap').classList.toggle('tall', tall);
   requestDraw();
 }
@@ -875,7 +878,8 @@ function now(){ return playing ? Math.min(buffer.duration, actx.currentTime - st
 function requestDraw(){ if(!drawPending && !playing){ drawPending=true; requestAnimationFrame(()=>{ drawPending=false; render(); }); } }
 function render(){
   const t = now();
-  frame(sctx, stage.width, stage.height, t);
+  RENDER_STILL = !!($('stillPreview') && $('stillPreview').checked);
+  try{ frame(sctx, stage.width, stage.height, t); } finally { RENDER_STILL=false; }
   $('time').textContent = `${fmtTime(t)} / ${fmtTime(buffer?buffer.duration:0)}`;
   drawPlayhead(t);
 }
@@ -974,9 +978,11 @@ async function saveBlob(blob, name){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setStatus('Saved '+name);
 }
+['stillPreview','stillSize'].forEach(id=>$(id).addEventListener('change', ()=>setAspect()));
+['stillText','stillHeadline'].forEach(id=>$(id).addEventListener('input', ()=>requestDraw()));
 $('saveStill').addEventListener('click', async ()=>{
   await ensureFont();
-  const [W,H] = {yt:[1920,1080], ig:[1080,1350], story:[1080,1920], square:[1080,1080]}[$('stillSize').value];
+  const [W,H] = STILL_DIMS[$('stillSize').value];
   const c=document.createElement('canvas'); c.width=W; c.height=H;
   RENDER_STILL=true; try{ frame(c.getContext('2d'),W,H,now()); } finally { RENDER_STILL=false; }
   const slug=(S.title||'still').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
