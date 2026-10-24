@@ -106,8 +106,8 @@ function sampleCorner(bmp){
   const n=d.length/4, h=v=>Math.round(v/n).toString(16).padStart(2,'0');
   return '#'+h(r)+h(g)+h(b);
 }
-/* Nod frames: only the head is taken from the nod frame and laid over the base body,
-   after aligning the two on the lower body, so generator drift can't make the body jitter. */
+/* Nod frames: aligned to the base on the lower body, then everything above the collar is taken from the
+   nod frame and blended into the base low in the hoodie, so generator drift below can't make the body jitter. */
 function grey(img, n){
   const c=document.createElement('canvas'); c.width=c.height=n; const x=c.getContext('2d',{willReadFrequently:true});
   x.drawImage(img,0,0,n,n); const d=x.getImageData(0,0,n,n).data, g=new Float32Array(n*n);
@@ -128,7 +128,8 @@ function buildNod(slot){
   const head = document.createElement('canvas'); head.width=head.height=n; const hx=head.getContext('2d');
   hx.drawImage(raw, ox*n, oy*n, n, n);
   hx.globalCompositeOperation='destination-in'; hx.filter=`blur(${n*0.025}px)`; hx.fillStyle='#000';
-  hx.beginPath(); hx.ellipse(n*0.5, n*0.34, n*0.27, n*0.31, 0, 0, Math.PI*2); hx.fill();
+  // everything above the collar comes from the nod frame; the seam sits low in the hoodie, where both frames match
+  hx.fillRect(-n*0.1, -n*0.1, n*1.2, n*(0.1+0.76));
   const out = document.createElement('canvas'); out.width=out.height=n; const o=out.getContext('2d');
   o.drawImage(base,0,0); o.drawImage(head,0,0);
   o.globalCompositeOperation='destination-in'; o.drawImage(base,0,0);   // keep the disc's soft edge
