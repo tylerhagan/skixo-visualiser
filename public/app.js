@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
-  bgDrift:0.5, glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', capPos:'bottom', capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[['poseLow','Side light at',0,1,0.01],['peakCount','Peak moments',0,4,1],['poseHold','Hold (s)',1,30,0.5]],
@@ -46,7 +46,7 @@ const fmtVal = v => (Math.abs(v)>=10? v.toFixed(0) : (+v).toFixed(2).replace(/0$
 function syncUI(){
   if(typeof syncSeg==='function') setTimeout(syncSeg);
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos']) $(k).value = S[k];
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics']) $(k).value = S[k];
   $('useWordmark').checked = S.useWordmark; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
@@ -61,7 +61,7 @@ function bindUI(){
       $(k+'-o').textContent = fmtVal(v); onChange(k);
     });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
   for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
@@ -1280,6 +1280,26 @@ function showMotionSec(){
 }
 document.querySelectorAll('#mslotSeg button').forEach(b=>b.addEventListener('click',()=>{ $('mslot').dataset.v=b.dataset.v; showMotionSec(); }));
 showMotionSec();
+
+/* ---------------- tap to time: paste lyrics, play, press Enter (or Tap) as each line starts ---------------- */
+let TAP=null;
+function tapShow(){ if(!TAP) return; const l=TAP.lines[TAP.i]; setStatus(l ? `Tap at: "${l}" (${TAP.i+1}/${TAP.lines.length}) · Enter to tap, Esc to stop` : 'Done'); $('tapNext').disabled=!l; }
+function tapEnd(msg){ TAP=null; $('tapNext').disabled=true; $('tapStart').textContent='Start tapping'; setStatus(msg||'Captions timed'); }
+function tapStamp(){
+  if(!TAP) return; const l=TAP.lines[TAP.i]; if(!l) return;
+  TAP.out.push(`${fmtTime(now(),true)} ${l}`); TAP.i++;
+  S.captions=TAP.out.join('\n'); $('captions').value=S.captions; onChange('captions');
+  if(TAP.i>=TAP.lines.length) tapEnd(`All ${TAP.lines.length} lines timed. Fix any in the caption list.`); else tapShow();
+}
+$('tapStart').addEventListener('click', ()=>{
+  if(TAP) return tapEnd('Stopped');
+  const lines=($('lyrics').value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  if(!buffer || !lines.length) return setStatus('Load a track and paste the lyrics first', true);
+  TAP={lines, i:0, out:[]}; $('lyrics').blur(); $('tapStart').textContent='Stop';
+  if(!playing) play(); tapShow();
+});
+$('tapNext').addEventListener('click', tapStamp);
+document.addEventListener('keydown', e=>{ if(!TAP) return; if(e.key==='Enter'){ e.preventDefault(); tapStamp(); } else if(e.key==='Escape'){ tapEnd('Stopped'); } });
 
 /* ---------------- tabs ---------------- */
 (function(){

@@ -95,9 +95,12 @@
         <div id="g-fades" class="grp" style="padding:0"></div>
       </div>
     </details>
-    <details data-tab="track">
+    <details open data-tab="track">
       <summary>Captions</summary>
       <div class="grp">
+        <textarea id="lyrics" spellcheck="false" aria-label="Lyrics" placeholder="Paste your lyrics, one line per caption" style="min-height:80px"></textarea>
+        <div class="btns"><button class="primary" id="tapStart">Start tapping</button><button id="tapNext" disabled>Tap</button></div>
+        <p class="hint">Press Start, then Enter (or Tap) the moment each line begins. The timed lines appear below, where you can fix any.</p>
         <textarea id="captions" spellcheck="false" aria-label="Captions" placeholder="0:42 first lyric line&#10;0:47 next line&#10;0:52"></textarea>
         <p class="hint">One line per cue: time, then the words. A time on its own clears the screen. Play the track and press "Stamp time" to drop in the current time.</p>
         <div class="btns"><button id="capNow">Stamp time</button></div>
