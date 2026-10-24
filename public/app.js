@@ -964,7 +964,7 @@ function drawCaption(ctx,W,H,U,t){
   if(S.capCase==='lower') txt=txt.toLowerCase(); else if(S.capCase==='upper') txt=txt.toUpperCase();
   txt=txt.replace(/skixo/gi,'skixO');
   const ease=p=>1-Math.pow(1-p,3);
-  let alpha = S.capAnim==='type' ? pout : Math.min(pin,pout);
+  let alpha = S.capAnim==='type' ? pout : S.capAnim==='words' ? Math.min(pout, Math.min(1,pin*2)) : Math.min(pin,pout);
   if(S.capAnim==='type') txt = txt.slice(0, Math.ceil(txt.length*Math.min(1,(t-c0)/Math.max(0.3,fi*2))));
   const col = S.capColour==='accent' ? S.blue : S.capColour==='paper' ? S.paperCol : S.ink;
   const edge = S.capColour==='paper' ? S.ink : S.paperCol;
@@ -984,7 +984,17 @@ function drawCaption(ctx,W,H,U,t){
     const w=Math.max(...lines.map(l=>ctx.measureText(l).width))+fs*0.9, h=block+fs*0.35;
     ctx.fillStyle=edge; ctx.globalAlpha=alpha*0.88; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W/2-w/2, y-lh/2-fs*0.17, w, h, fs*0.18) : ctx.rect(W/2-w/2, y-lh/2-fs*0.17, w, h); ctx.fill(); ctx.globalAlpha=alpha;
   }
-  lines.forEach((l,k)=>{ const yy=y+k*lh;
+  if(S.capAnim==='words'){
+    // karaoke: the whole line shows faintly, words light up in turn across the line's time
+    const words=lines.flatMap((l,k)=>l.split(' ').map(w=>({w,k}))), span=Math.max(0.6,Math.min((end===Infinity?6:end-c0)*0.8, words.length*0.45));
+    const lit=Math.min(words.length, Math.floor(words.length*(t-c0)/span)+1);
+    let n=0; ctx.textAlign='left';
+    lines.forEach((l,k)=>{ const yy=y+k*lh, ws=l.split(' '), sp=ctx.measureText(' ').width; let x=W/2-ctx.measureText(l).width/2;
+      for(const w of ws){ const on=n<lit, ww=ctx.measureText(w).width;
+        ctx.globalAlpha=alpha*(on?1:0.28);
+        if(S.capStyle==='outline'){ ctx.strokeStyle=edge; ctx.lineWidth=fs*0.22; ctx.strokeText(w,x,yy); }
+        ctx.fillStyle=col; ctx.fillText(w,x,yy); x+=ww+sp; n++; } });
+  } else lines.forEach((l,k)=>{ const yy=y+k*lh;
     if(S.capStyle==='outline'){ ctx.strokeStyle=edge; ctx.lineWidth=fs*0.22; ctx.strokeText(l,W/2,yy); }
     ctx.fillStyle=col; ctx.fillText(l,W/2,yy); });
   ctx.restore(); ctx.letterSpacing='0px';
@@ -1423,6 +1433,44 @@ function showMotionSec(){
 }
 document.querySelectorAll('#mslotSeg button').forEach(b=>b.addEventListener('click',()=>{ $('mslot').dataset.v=b.dataset.v; showMotionSec(); }));
 showMotionSec();
+
+/* ---------------- draft captions with Whisper (beta) ----------------
+   Runs in a Web Worker using transformers.js; the model downloads on first use and is then cached. */
+let WH=null;
+const WH_MODELS={fast:'Xenova/whisper-tiny.en', better:'Xenova/whisper-base.en', best:'Xenova/whisper-small.en'};
+function whisperWorker(){
+  const code=`import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
+  env.allowLocalModels=false; let asr=null, loaded='';
+  self.onmessage=async e=>{ const {model,audio}=e.data;
+    try{
+      if(!asr || loaded!==model){ asr=await pipeline('automatic-speech-recognition', model, { progress_callback:p=>{ if(p.status==='progress') self.postMessage({type:'load', file:p.file, progress:p.progress}); } }); loaded=model; }
+      self.postMessage({type:'status', text:'Listening…'});
+      const out=await asr(audio,{ chunk_length_s:30, stride_length_s:5, return_timestamps:true });
+      self.postMessage({type:'done', chunks: out.chunks||[], text: out.text||''});
+    }catch(err){ self.postMessage({type:'error', text:String(err && err.message || err)}); }
+  };`;
+  return new Worker(URL.createObjectURL(new Blob([code],{type:'text/javascript'})),{type:'module'});
+}
+async function to16k(buf){ const oc=new OfflineAudioContext(1, Math.ceil(buf.duration*16000), 16000); const src=oc.createBufferSource(); src.buffer=buf; src.connect(oc.destination); src.start(); return (await oc.startRendering()).getChannelData(0); }
+$('f-stem').addEventListener('change', e=>{ const f=e.target.files[0]; if(f) setNote('stem', f.name); });
+$('whisperGo').addEventListener('click', async ()=>{
+  if(WH) return;
+  let buf=buffer; const stem=$('f-stem').files[0];
+  try{ if(stem) buf=await getCtx().decodeAudioData(await stem.arrayBuffer()); }catch(e){ return setStatus("Couldn't read that vocal stem", true); }
+  if(!buf) return setStatus('Load a track (or a vocal stem) first', true);
+  $('whisperGo').disabled=true; setStatus('Preparing audio…', true);
+  const audio=await to16k(buf); WH=whisperWorker();
+  WH.onmessage=e=>{ const m=e.data;
+    if(m.type==='load') setStatus(`Downloading model ${Math.round(m.progress||0)}% (first time only)`, true);
+    else if(m.type==='status') setStatus(m.text+' This can take a few minutes.', true);
+    else if(m.type==='done'){
+      const lines=m.chunks.filter(c=>c.text && c.text.trim()).map(c=>`${fmtTime(c.timestamp[0]||0,true)} ${c.text.trim()}`);
+      S.captions=lines.join('\n'); $('captions').value=S.captions; S.lyrics=m.chunks.map(c=>c.text.trim()).filter(Boolean).join('\n'); $('lyrics').value=S.lyrics; onChange('captions'); persist();
+      setStatus(`Draft ready: ${lines.length} lines. Check the words; re-tap with the lyrics box if timings drift.`); WH.terminate(); WH=null; $('whisperGo').disabled=false; }
+    else if(m.type==='error'){ setStatus('Transcription failed: '+m.text, true); WH.terminate(); WH=null; $('whisperGo').disabled=false; }
+  };
+  WH.postMessage({model:WH_MODELS[$('whisperModel').value], audio},[audio.buffer]);
+});
 
 /* ---------------- tap to time: paste lyrics, play, press Enter (or Tap) as each line starts ---------------- */
 let TAP=null;

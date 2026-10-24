@@ -98,6 +98,10 @@
     <details open data-tab="track">
       <summary>Captions</summary>
       <div class="grp">
+        <div class="files"><div class="file"><label for="f-stem">Vocal stem</label><input type="file" id="f-stem" accept="audio/*"></div></div>
+        <div class="row wide"><label for="whisperModel">Draft quality</label><select id="whisperModel" data-seg><option value="fast">Fast</option><option value="better">Better</option><option value="best">Best</option></select></div>
+        <div class="btns"><button id="whisperGo">Draft captions (beta)</button></div>
+        <p class="hint">Listens to the vocal stem (or the track) and writes a first draft with timings. Downloads a speech model the first time: about 40, 75 or 250 MB. Best on a clean vocal stem; expect to fix some words.</p>
         <textarea id="lyrics" spellcheck="false" aria-label="Lyrics" placeholder="Paste your lyrics, one line per caption" style="min-height:80px"></textarea>
         <div class="btns"><button class="primary" id="tapStart">Start tapping</button><button id="tapNext" disabled>Tap</button></div>
         <p class="hint">Press Start, then Enter (or Tap) the moment each line begins. The timed lines appear below, where you can fix any.</p>
@@ -105,7 +109,7 @@
         <p class="hint">One line per cue: time, then the words. A time on its own clears the screen. Play the track and press "Stamp time" to drop in the current time.</p>
         <div class="btns"><button id="capNow">Stamp time</button></div>
         <div class="row wide"><label for="capPos">Position</label><select id="capPos" data-seg><option value="bottom">Bottom</option><option value="centre">Centre</option><option value="top">Top</option></select></div>
-        <div class="row wide"><label for="capAnim">Entrance</label><select id="capAnim" data-seg><option value="fade">Fade</option><option value="rise">Rise</option><option value="type">Type</option></select></div>
+        <div class="row wide"><label for="capAnim">Entrance</label><select id="capAnim" data-seg><option value="fade">Fade</option><option value="rise">Rise</option><option value="type">Type</option><option value="words">Word by word</option></select></div>
         <div class="row wide"><label for="capStyle">Finish</label><select id="capStyle" data-seg><option value="outline">Outline</option><option value="box">Box</option><option value="plain">Plain</option></select></div>
         <div class="row wide"><label for="capColour">Colour</label><select id="capColour" data-seg><option value="ink">Ink</option><option value="accent">Accent</option><option value="paper">Paper</option></select></div>
         <div class="row wide"><label for="capWeight">Weight</label><select id="capWeight" data-seg><option value="400">Regular</option><option value="500">Medium</option><option value="600">Semi</option><option value="700">Bold</option></select></div>
