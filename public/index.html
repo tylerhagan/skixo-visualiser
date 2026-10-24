@@ -63,6 +63,23 @@
     </details>
 
     <details open>
+      <summary>Nod</summary>
+      <div class="grp">
+        <p class="hint">Add nod frames to make the head bob on the beat. Only the head is taken from each frame, aligned over the existing body. Nodding uses the side-light frames, so it runs once the track lifts.</p>
+        <div class="files">
+          <div class="file"><label for="f-n1c">Closed, slight</label><input type="file" id="f-n1c" accept="image/*"></div>
+          <div class="file"><label for="f-n2c">Closed, deep</label><input type="file" id="f-n2c" accept="image/*"></div>
+          <div class="file"><label for="f-n1o">Open, slight</label><input type="file" id="f-n1o" accept="image/*"></div>
+          <div class="file"><label for="f-n2o">Open, deep</label><input type="file" id="f-n2o" accept="image/*"></div>
+        </div>
+        <div id="g-nod" class="grp" style="padding:0"></div>
+        <div class="row wide"><label for="nodEvery">Nod every</label><select id="nodEvery"><option value="1">Beat</option><option value="2">2 beats</option><option value="4">Bar</option></select></div>
+        <div class="row wide"><label for="bpm">Tempo</label><input type="text" id="bpm" inputmode="decimal" placeholder="Auto"></div>
+        <p class="hint">Detected: <span id="bpmFound" style="color:var(--fg)">–</span>. Type a BPM to override.</p>
+      </div>
+    </details>
+
+    <details open>
       <summary>Motion</summary>
       <div class="grp" id="g-motion"></div>
     </details>

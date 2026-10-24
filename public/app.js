@@ -2,7 +2,7 @@
 /* ---------------- settings ---------------- */
 const DEFAULTS = {
   layout:'badge', aspect:'16:9',
-  poseMode:'auto', poseLow:0.40, poseHigh:0.74, poseHold:8, poseFade:3, eyeFade:0, blinks:0.35, snapKick:true, manualCues:'',
+  poseMode:'auto', poseLow:0.40, poseHigh:0.74, poseHold:8, poseFade:3, eyeFade:0, blinks:0.35, snapKick:true, nod:0.6, nodEvery:'1', nodGate:0.45, bpm:'', manualCues:'',
   badgeSize:0.80, breathe:0.5, kick:0.45, sway:0.3,
   rings:0.45, misprint:0.3, spectrum:0.4,
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
@@ -16,6 +16,8 @@ const SLIDERS = {
     ['poseHold','Hold (s)',1,30,0.5]],
   'g-posefx':[
     ['poseFade','Light change (s)',0.2,8,0.1],['eyeFade','Eye blend (s)',0,0.5,0.01],['blinks','Blinks',0,1,0.01]],
+  'g-nod':[
+    ['nod','Nod depth',0,1,0.01],['nodGate','Nod from energy',0,1,0.01]],
   'g-motion':[
     ['badgeSize','Portrait size',0.4,1.0,0.01],['breathe','Breathing',0,1,0.01],['kick','Kick pulse',0,1,0.01],
     ['sway','Sway',0,1,0.01],['rings','Kick rings',0,1,0.01],['misprint','Misprint',0,1,0.01],['spectrum','Spectrum ticks',0,1,0.01],
@@ -43,7 +45,7 @@ buildSliders();
 const fmtVal = v => (Math.abs(v)>=10? v.toFixed(0) : (+v).toFixed(2).replace(/0$/,''));
 function syncUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues']) $(k).value = S[k];
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm']) $(k).value = S[k];
   $('useWordmark').checked = S.useWordmark; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
@@ -51,7 +53,7 @@ function bindUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){
     $(k).addEventListener('input', e=>{ S[k] = +e.target.value; $(k+'-o').textContent = fmtVal(S[k]); onChange(k); });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
   for(const k of ['useWordmark','lowercase','snapKick']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
@@ -62,6 +64,7 @@ function onChange(k){
     if(S.poseMode==='manual' && !S.manualCues.trim() && A){ S.manualCues = cuesToText(autoCues()); $('manualCues').value = S.manualCues; }
   }
   if(k==='aspect') setAspect();
+  if(k==='bpm' && A){ A.grid = beatGrid(); showGrid(); }
   if(k==='ink') wordmarkImg = null, loadWordmark();
   if(k==='blue') makeClouds(S.blue);
   if(['poseMode','poseLow','poseHigh','poseHold','manualCues','poseFade','eyeFade','blinks','snapKick'].includes(k)) rebuildCues();
@@ -70,7 +73,8 @@ function onChange(k){
 }
 
 /* ---------------- assets ---------------- */
-const IMGS = { a:null, b:null, c:null, h:null, w:null };   // masked canvases for poses, raw bitmap for wide scene
+const IMGS = { a:null, b:null, c:null, h:null, w:null, n1c:null, n2c:null, n1o:null, n2o:null };
+const NOD_SLOTS = ['n1c','n2c','n1o','n2o'], RAW = {};   // masked canvases for poses, raw bitmap for wide scene
 let wordmarkSrc = null, wordmarkImg = null;
 function maskPose(bmp){
   const n = Math.max(bmp.width, bmp.height);
@@ -89,7 +93,9 @@ async function loadImage(src){
 }
 async function setPose(slot, src){
   const bmp = await loadImage(src);
-  if(slot==='w') IMGS.w = bmp; else IMGS[slot] = maskPose(bmp);
+  if(slot==='w') IMGS.w = bmp;
+  else if(NOD_SLOTS.includes(slot)){ RAW[slot] = bmp; buildNod(slot); }
+  else { IMGS[slot] = maskPose(bmp); if(slot==='b'||slot==='c') NOD_SLOTS.forEach(buildNod); }
   requestDraw();
 }
 function sampleCorner(bmp){
@@ -100,6 +106,35 @@ function sampleCorner(bmp){
   const n=d.length/4, h=v=>Math.round(v/n).toString(16).padStart(2,'0');
   return '#'+h(r)+h(g)+h(b);
 }
+/* Nod frames: only the head is taken from the nod frame and laid over the base body,
+   after aligning the two on the lower body, so generator drift can't make the body jitter. */
+function grey(img, n){
+  const c=document.createElement('canvas'); c.width=c.height=n; const x=c.getContext('2d',{willReadFrequently:true});
+  x.drawImage(img,0,0,n,n); const d=x.getImageData(0,0,n,n).data, g=new Float32Array(n*n);
+  for(let i=0;i<n*n;i++) g[i]=d[i*4]*0.3+d[i*4+1]*0.59+d[i*4+2]*0.11; return g;
+}
+function alignOffset(baseImg, img){
+  const n=160, A1=grey(baseImg,n), B1=grey(img,n); let best=[0,0], bestE=1e18;
+  for(let dy=-8;dy<=8;dy++) for(let dx=-8;dx<=8;dx++){
+    let e=0; for(let y=Math.floor(n*0.70);y<Math.floor(n*0.93);y+=2) for(let x=Math.floor(n*0.12);x<Math.floor(n*0.88);x+=2){
+      const yy=y-dy, xx=x-dx; e+=Math.abs(A1[y*n+x]-B1[yy*n+xx]); }
+    if(e<bestE){ bestE=e; best=[dx/n,dy/n]; } }
+  return best;
+}
+function buildNod(slot){
+  const raw = RAW[slot]; if(!raw) return;
+  const base = slot.endsWith('c') ? IMGS.b : IMGS.c; if(!base) return;
+  const n = base.width, [ox,oy] = alignOffset(base._src, raw);
+  const head = document.createElement('canvas'); head.width=head.height=n; const hx=head.getContext('2d');
+  hx.drawImage(raw, ox*n, oy*n, n, n);
+  hx.globalCompositeOperation='destination-in'; hx.filter=`blur(${n*0.025}px)`; hx.fillStyle='#000';
+  hx.beginPath(); hx.ellipse(n*0.5, n*0.34, n*0.27, n*0.31, 0, 0, Math.PI*2); hx.fill();
+  const out = document.createElement('canvas'); out.width=out.height=n; const o=out.getContext('2d');
+  o.drawImage(base,0,0); o.drawImage(head,0,0);
+  o.globalCompositeOperation='destination-in'; o.drawImage(base,0,0);   // keep the disc's soft edge
+  out._src = raw; IMGS[slot] = out; requestDraw();
+}
+
 async function loadWordmark(){
   try{
     if(!wordmarkSrc) wordmarkSrc = await (await fetch('assets/wordmark.svg')).text();
@@ -158,9 +193,49 @@ async function analyse(buf){
   const energy = sm.map(v=>Math.max(0,Math.min(1,(v-p5)/(p97-p5||1))));
   const kicks = onsets(L, 18, 0.32), hats = onsets(H, 7, 0.3);
   A = { sr, mono, dur: buf.duration, energy, kicks, hats };
+  A.grid = beatGrid(); showGrid();
   $('kickcount').textContent = `${kicks.length} kicks · ${hats.length} hats detected`;
   rebuildCues(); drawTimeline(); setStatus('Ready');
 }
+/* Tempo and downbeat from the kicks: autocorrelation for a rough period, then a fine search
+   that maximises how well kicks line up with a bar grid (also gives the downbeat phase). */
+function beatGrid(){
+  if(!A) return null;
+  const ks = A.kicks.filter(k=>k.s>=0.35); if(ks.length<8) return null;
+  const barScore = (beat)=>{ let re=0, im=0; const P=beat*4; for(const k of ks){ const a=2*Math.PI*k.t/P; re+=k.s*Math.cos(a); im+=k.s*Math.sin(a); } return {mag:Math.hypot(re,im), phase:((Math.atan2(im,re)/(2*Math.PI))*P + P) % P}; };
+  let beat;
+  const manual = parseFloat(S.bpm);
+  if(manual>40 && manual<300) beat = 60/manual;
+  else {
+    const n = Math.ceil(A.dur/HOP)+2, tr = new Float32Array(n);
+    for(const k of ks) tr[Math.round(k.t/HOP)] += k.s;
+    let bestLag=0, best=-1;
+    for(let lag=Math.round(0.3/HOP); lag<=Math.round(0.9/HOP); lag++){
+      let sc=0; for(let i=1;i<n-lag-1;i++) if(tr[i]) sc += tr[i]*(tr[i+lag] + 0.5*(tr[i+lag-1]+tr[i+lag+1]));
+      if(sc>best){ best=sc; bestLag=lag; } }
+    let bpm = 60/(bestLag*HOP); while(bpm<90) bpm*=2; while(bpm>190) bpm/=2;
+    let b0 = 60/bpm, bestB=b0, bestM=-1;
+    for(let f=0.985; f<=1.015; f+=0.00025){ const m=barScore(b0*f).mag; if(m>bestM){ bestM=m; bestB=b0*f; } }
+    beat = bestB;
+  }
+  return { beat, phase: barScore(beat).phase, bpm: 60/beat };
+}
+function showGrid(){ const el=$('bpmFound'); if(el) el.textContent = A && A.grid ? `${A.grid.bpm.toFixed(1)} BPM` : '–'; }
+function nodFrame(t, img){
+  if(!A || !A.grid || S.nod<=0 || (img!==1 && img!==2)) return null;
+  const e = img===1 ? 'c' : 'o', f1 = IMGS['n1'+e], f2 = IMGS['n2'+e];
+  if(!f1 && !f2) return null;
+  if(energyAt(t) < S.nodGate) return null;
+  const P = A.grid.beat * (+S.nodEvery || 1);
+  const ph = (((t - A.grid.phase + 0.05) % P) + P) % P;   // head is lowest right on the beat
+  const shallow = f1 || f2, deep = (S.nod > 0.45 && f2) ? f2 : shallow;
+  const hold = 0.05 + 0.1*S.nod;
+  if(ph < 0.05) return shallow;
+  if(ph < 0.05 + hold) return deep;
+  if(ph < 0.05 + hold + 0.06) return shallow;
+  return null;
+}
+
 function setStatus(t, busy){ const s=$('status'); s.textContent=t; s.classList.toggle('busy',!!busy); }
 async function loadAudio(src){
   setStatus('Decoding audio…', true);
@@ -386,7 +461,8 @@ function frame(ctx, W, H, t){
     drawSpectrum(ctx,cx,cy,size*0.5*scale+U*0.012,U,t);
     // portrait
     const ps = poseState(t), imgs=[IMGS.a,IMGS.b,IMGS.c,IMGS.h||IMGS.b];
-    const base = imgs[ps.from]||IMGS.a, top = imgs[ps.to]||IMGS.a;
+    let base = imgs[ps.from]||IMGS.a, top = imgs[ps.to]||IMGS.a;
+    if(ps.mix>=1){ const nf = nodFrame(t, ps.to); if(nf){ base = nf; top = nf; } }
     ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot); ctx.scale(scale,scale);
     if(base){
       // soft shadow on the paper
@@ -586,13 +662,14 @@ async function takeFile(file, slot){
   try{
     if(file.type.startsWith('audio') || /\.(wav|mp3|flac|ogg|m4a|aiff?)$/i.test(file.name)){ await loadAudio(file); store.put('audio', file, file.name); $('trackName').textContent = file.name; return; }
     if(file.type.startsWith('image')){
-      const s = slot || (/wide|wall|banner/i.test(file.name) ? 'w' : /half|mid|between/i.test(file.name) ? 'h' : /open|cute|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
+      const nm = file.name.match(/nod[-_ ]?(closed|open)[-_ ]?([12])/i);
+      const s = slot || (nm ? 'n'+nm[2]+(nm[1].toLowerCase()==='open'?'o':'c') : /wide|wall|banner/i.test(file.name) ? 'w' : /half|mid|between/i.test(file.name) ? 'h' : /open|cute|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
       await setPose(s, file); store.put('img-'+s, file, file.name); if(s==='h') rebuildCues(); setStatus(`Loaded ${file.name}`);
     }
   }catch(err){ setStatus(`Couldn't read ${file.name}. Try a WAV, MP3, PNG or JPG.`, true); }
 }
 $('f-audio').addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0]));
-for(const s of ['a','b','c','h','w']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
+for(const s of ['a','b','c','h','w','n1c','n2c','n1o','n2o']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
 const app = $('app');
 app.addEventListener('dragover', e=>{ e.preventDefault(); app.classList.add('drop'); });
 app.addEventListener('dragleave', e=>{ if(e.target===app) app.classList.remove('drop'); });
@@ -723,7 +800,7 @@ syncUI(); bindUI(); setAspect();
 (async ()=>{
   try{
     const starter = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/cute.jpg', w:'assets/wallpaper.jpg' };
-    await Promise.all(['a','b','c','h','w'].map(async k=>{
+    await Promise.all(['a','b','c','h','w','n1c','n2c','n1o','n2o'].map(async k=>{
       const saved = await store.get('img-'+k);
       if(saved && saved.blob) return setPose(k, saved.blob);
       if(starter[k]) return setPose(k, starter[k]);
