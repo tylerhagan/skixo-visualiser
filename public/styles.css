@@ -37,7 +37,7 @@ button:disabled{opacity:.45;cursor:default}
 .rail{background:var(--panel);border-radius:6px;overflow:auto;min-height:0;padding:4px 0}
 details{border-bottom:1px solid var(--line)}
 details:last-child{border-bottom:0}
-summary{list-style:none;cursor:pointer;padding:12px 16px;font-weight:600;font-size:11px;letter-spacing:.09em;text-transform:uppercase;display:flex;justify-content:space-between;color:#cfc9bc}
+summary{list-style:none;cursor:pointer;padding:13px 16px;font-weight:600;font-size:13px;letter-spacing:.01em;display:flex;justify-content:space-between;color:var(--fg)}
 summary::-webkit-details-marker{display:none}
 summary::after{content:"+";color:var(--muted);font-weight:400}
 details[open] summary::after{content:"–"}
@@ -84,3 +84,14 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-s
 .tabs{position:sticky;top:0;z-index:2;display:flex;gap:2px;padding:8px 8px 0;background:var(--panel);border-bottom:1px solid var(--line)}
 .tabs button{flex:1;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--muted);padding:9px 4px;font-size:12px}
 .tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.slot{display:flex;flex-direction:column;gap:5px;padding:5px;font-size:11px;align-items:stretch;text-align:left;position:relative}
+.slot .sthumb{display:block;aspect-ratio:16/9;border-radius:3px;background:var(--bg) center/cover no-repeat;border:1px dashed var(--line)}
+.slot .sthumb.set{border-style:solid}
+.slot[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.slot .x{position:absolute;top:2px;right:4px;font-style:normal;color:var(--fg);background:rgba(0,0,0,.55);border-radius:3px;padding:0 5px;line-height:16px;cursor:pointer}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg{display:flex;flex-wrap:wrap;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:2px;min-width:0}
+.seg button{flex:1 1 auto;border:0;background:none;color:var(--muted);padding:5px 8px;font-size:12px;border-radius:3px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:0 0 0 1px var(--line)}
+.row.wide.stack{grid-template-columns:1fr}

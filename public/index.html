@@ -48,7 +48,7 @@
     <details open data-tab="track">
       <summary>Track &amp; artwork</summary>
       <div class="grp">
-        <p class="hint">Drop an audio file or image anywhere on the page, or pick one here. Files stay in this browser and are remembered next time. Peak face is optional; without it, side light carries the peak.</p>
+        <p class="hint">Drop files anywhere on the page. They're remembered in this browser.</p>
         <span id="trackName" hidden></span>
         <div class="files">
           <div class="file"><label for="f-audio">Track</label><input type="file" id="f-audio" accept="audio/*"></div>
@@ -61,13 +61,13 @@
       </div>
     </details>
 
-    <details open data-tab="track">
+    <details data-tab="track">
       <summary>Captions</summary>
       <div class="grp">
         <textarea id="captions" spellcheck="false" aria-label="Captions" placeholder="0:42 first lyric line&#10;0:47 next line&#10;0:52"></textarea>
         <p class="hint">One line per cue: time, then the words. A time on its own clears the screen. Play the track and press "Stamp time" to drop in the current time.</p>
         <div class="btns"><button id="capNow">Stamp time</button></div>
-        <div class="row wide"><label for="capPos">Position</label><select id="capPos"><option value="bottom">Bottom</option><option value="centre">Centre</option><option value="top">Top</option></select></div>
+        <div class="row wide"><label for="capPos">Position</label><select id="capPos" data-seg><option value="bottom">Bottom</option><option value="centre">Centre</option><option value="top">Top</option></select></div>
         <div id="g-caps" class="grp" style="padding:0"></div>
       </div>
     </details>
@@ -75,7 +75,7 @@
     <details open data-tab="motion">
       <summary>Poses</summary>
       <div class="grp" id="g-poses">
-        <div class="row wide"><label for="poseMode">Changes</label><select id="poseMode"><option value="auto">Follow the track's energy</option><option value="manual">My own cue list</option></select></div>
+        <div class="row wide"><label for="poseMode">Changes</label><select id="poseMode" data-seg><option value="auto">Follow the track's energy</option><option value="manual">My own cue list</option></select></div>
         <div id="autoPose" class="grp" style="padding:0"></div>
         <div id="manualPose" hidden>
           <textarea id="manualCues" spellcheck="false" aria-label="Cue list"></textarea>
@@ -87,10 +87,10 @@
       </div>
     </details>
 
-    <details open data-tab="motion">
+    <details data-tab="motion">
       <summary>Nod</summary>
       <div class="grp">
-        <p class="hint">Add nod frames to make the head bob on the beat. Only the head is taken from each frame, aligned over the existing body. Each set nods in its own sections: flat light when quiet, side light as it lifts, peak face at the top. Name files like nod-side-1.png and they drop into place.</p>
+        <p class="hint">Nod frames bob the head on the beat. Name files like nod-side-1.png and they drop into place.</p>
         <div class="files">
           <div class="file"><label for="f-n1c">Side, slight</label><input type="file" id="f-n1c" accept="image/*"></div>
           <div class="file"><label for="f-n2c">Side, deep</label><input type="file" id="f-n2c" accept="image/*"></div>
@@ -100,7 +100,7 @@
           <div class="file"><label for="f-n2p">Peak, deep</label><input type="file" id="f-n2p" accept="image/*"></div>
         </div>
         <div id="g-nod" class="grp" style="padding:0"></div>
-        <div class="row wide"><label for="nodEvery">Nod every</label><select id="nodEvery"><option value="1">Beat</option><option value="2">2 beats</option><option value="4">Bar</option></select></div>
+        <div class="row wide"><label for="nodEvery">Nod every</label><select id="nodEvery" data-seg><option value="1">Beat</option><option value="2">2 beats</option><option value="4">Bar</option></select></div>
         <div class="row wide"><label for="bpm">Tempo</label><input type="text" id="bpm" inputmode="decimal" placeholder="Auto"></div>
         <p class="hint">Detected: <span id="bpmFound" style="color:var(--fg)">–</span>. Type a BPM to override.</p>
       </div>
@@ -111,14 +111,14 @@
       <div class="grp" id="g-motion"></div>
     </details>
 
-    <details open data-tab="motion">
+    <details data-tab="motion">
       <summary>Glitch</summary>
       <div class="grp" id="g-glitch">
         <p class="hint">Real glitches on the hits: scanline tearing, colour splits, block shifts and a VHS roll. Strongest at the peak moments, with a burst at each section change.</p>
       </div>
     </details>
 
-    <details open data-tab="look">
+    <details data-tab="look">
       <summary>Atmosphere</summary>
       <div class="grp" id="g-atmos"></div>
     </details>
@@ -129,7 +129,7 @@
         <div class="row wide"><label for="title">Title</label><input type="text" id="title"></div>
         <div class="row wide"><label for="artist">Artist</label><input type="text" id="artist"></div>
         <div class="row wide"><label for="credit">Small line</label><input type="text" id="credit" placeholder="e.g. originally by …"></div>
-        <div class="row wide"><label for="textPos">Position</label><select id="textPos"><option value="bottom-left">Bottom left</option><option value="bottom-centre">Bottom centre</option><option value="top-left">Top left</option><option value="headline">Headline, centre</option><option value="headline-top">Headline, top</option><option value="headline-bottom">Headline, bottom</option><option value="off">Hidden</option></select></div>
+        <div class="row wide"><label for="textPos">Position</label><select id="textPos" data-seg><option value="bottom-left">Bottom left</option><option value="bottom-centre">Bottom centre</option><option value="top-left">Top left</option><option value="headline">Headline, centre</option><option value="headline-top">Headline, top</option><option value="headline-bottom">Headline, bottom</option><option value="off">Hidden</option></select></div>
         <div class="row wide"><label for="font">Font</label><select id="font"></select></div>
         <div class="row wide" id="fontCustomRow" hidden><label for="fontCustom">Installed font</label><input type="text" id="fontCustom" placeholder="Exact name, e.g. Futura PT"></div>
         <div id="g-typeS" class="grp" style="padding:0"></div>
@@ -143,19 +143,21 @@
     <details open data-tab="look">
       <summary>Scene</summary>
       <div class="grp">
-        <div class="row wide"><label for="layout">Layout</label><select id="layout"><option value="badge">Badge on paper</option><option value="close">Close-up</option><option value="wallpaper">Wide scene (still image)</option></select></div>
-        <div class="row wide"><label for="aspect">Frame</label><select id="aspect"><option value="16:9">16:9 · YouTube</option><option value="9:16">9:16 · Shorts / Reels</option></select></div>
-        <div class="files">
-          <div class="file"><label for="f-bg">Background</label><input type="file" id="f-bg" accept="image/*"></div>
-          <div class="row wide"><label for="bgSet">Scenes</label><select id="bgSet"><option value="all">All sets</option><option value="wistful">Wistful</option><option value="surreal">Surreal</option><option value="glitch">Glitch</option></select></div>
-          <div class="row wide"><label for="bgPal">Palette</label><select id="bgPal"><option value="all">All palettes</option><option value="dusk">Dusk</option><option value="night">Night</option><option value="riso">Riso red</option><option value="sage">Sage</option></select></div>
-          <div class="row wide"><label for="bgTarget">Use for</label><select id="bgTarget"><option value="all">Whole track</option><option value="q">Quiet sections</option><option value="l">Lifted sections</option><option value="p">Peak moments</option></select></div>
-          <div class="bggrid" id="bgGrid"></div>
-          <p class="hint" id="secBgs"></p>
-          <div class="btns"><button id="clearSecBgs">Clear section scenes</button></div>
-          <div class="row wide"><label for="bgMatch">Match look</label><input type="checkbox" id="bgMatch"></div>
-          <div class="btns"><button id="matchBg">Match look to background</button><button id="clearBg">Remove background</button></div>
+        <div class="row wide"><label for="layout">Layout</label><select id="layout" data-seg><option value="badge">Badge on paper</option><option value="close">Close-up</option><option value="wallpaper">Wide scene (still image)</option></select></div>
+        <div class="row wide"><label for="aspect">Frame</label><select id="aspect" data-seg><option value="16:9">16:9 · YouTube</option><option value="9:16">9:16 · Shorts / Reels</option></select></div>
+        <p class="hint">Pick a slot, then click a background. Empty sections fall back to the whole-track background.</p>
+        <div class="slots" id="bgSlots">
+          <button type="button" class="slot" data-slot="all"><span class="sthumb"></span><span class="slab">Whole track</span></button>
+          <button type="button" class="slot" data-slot="q"><span class="sthumb"></span><span class="slab">Quiet</span></button>
+          <button type="button" class="slot" data-slot="l"><span class="sthumb"></span><span class="slab">Lifted</span></button>
+          <button type="button" class="slot" data-slot="p"><span class="sthumb"></span><span class="slab">Peak</span></button>
         </div>
+        <select id="bgTarget" hidden><option value="all">all</option><option value="q">q</option><option value="l">l</option><option value="p">p</option></select>
+        <div class="filters"><select id="bgSet" aria-label="Scene set"><option value="all">All sets</option><option value="wistful">Wistful</option><option value="surreal">Surreal</option><option value="glitch">Glitch</option></select><select id="bgPal" aria-label="Palette"><option value="all">All palettes</option><option value="dusk">Dusk</option><option value="night">Night</option><option value="riso">Riso red</option><option value="sage">Sage</option></select></div>
+        <div class="bggrid" id="bgGrid"></div>
+        <div class="row wide"><label for="bgMatch">Match look on pick</label><input type="checkbox" id="bgMatch"></div>
+        <div class="files"><div class="file"><label for="f-bg">Your own image</label><input type="file" id="f-bg" accept="image/*"></div></div>
+        <div class="btns"><button id="matchBg">Match look now</button><button id="clearSecBgs" hidden>Clear</button><button id="clearBg" hidden>Remove</button></div>
       </div>
     </details>
 
@@ -164,7 +166,7 @@
       <div class="grp">
         <div class="looks" id="looks"></div>
         <p class="hint">A look sets the paper, ink and accent, and recolours the artwork's blue to match. Fine-tune below.</p>
-        <div class="row wide"><label for="edge">Edge</label><select id="edge"><option value="auto">Auto (crisp on dark paper)</option><option value="soft">Soft</option><option value="ring">Crisp ring</option><option value="trim">Trimmed</option></select></div>
+        <div class="row wide"><label for="edge">Edge</label><select id="edge" data-seg><option value="auto">Auto (crisp on dark paper)</option><option value="soft">Soft</option><option value="ring">Crisp ring</option><option value="trim">Trimmed</option></select></div>
         <div class="row wide"><label for="ink">Ink</label><input type="color" id="ink"></div>
         <div class="row wide"><label for="blue">Blue</label><input type="color" id="blue"></div>
         <div class="row wide"><label for="paperCol">Paper / background</label><input type="color" id="paperCol"></div>
@@ -173,26 +175,31 @@
     </details>
 
     <details open data-tab="export">
-      <summary>Export</summary>
+      <summary>Video</summary>
       <div class="grp">
-        <div class="row wide"><label for="res">Size</label><select id="res"><option value="1080">1080p (1920×1080)</option><option value="1440">1440p (2560×1440)</option><option value="720">720p, quick test</option></select></div>
-        <div class="row wide"><label for="fps">Frame rate</label><select id="fps"><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
-        <div class="row wide"><label for="formats">Formats</label><select id="formats"><option value="one">Current frame shape</option><option value="both">Both 16:9 and 9:16</option></select></div>
-        <div class="row wide"><label for="range">Range</label><select id="range"><option value="full">Whole track</option><option value="test">15 s from playhead</option></select></div>
+        <div class="row wide"><label for="res">Size</label><select id="res" data-seg><option value="1080">1080p (1920×1080)</option><option value="1440">1440p (2560×1440)</option><option value="720">720p, quick test</option></select></div>
+        <div class="row wide"><label for="fps">Frame rate</label><select id="fps" data-seg><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
+        <div class="row wide"><label for="formats">Formats</label><select id="formats" data-seg><option value="one">Current frame shape</option><option value="both">Both 16:9 and 9:16</option></select></div>
+        <div class="row wide"><label for="range">Range</label><select id="range" data-seg><option value="full">Whole track</option><option value="test">15 s from playhead</option></select></div>
         <div class="btns"><button class="primary" id="export" disabled>Render MP4</button><button id="canvasLoop" disabled>Spotify Canvas</button><button id="cancel" hidden>Cancel</button><button id="saveAgain" hidden>Save again</button></div>
         <div class="progress" aria-hidden="true"><div id="bar"></div></div>
-        <div class="row wide"><label for="stillSize">Still</label><select id="stillSize"><option value="yt">YouTube thumbnail (16:9)</option><option value="ig">Instagram post (4:5)</option><option value="story">Story / Reel cover (9:16)</option><option value="square">Square (1:1)</option></select></div>
-        <div class="row wide"><label for="stillText">Still text</label><select id="stillText"><option value="same">Same as video</option><option value="headline">Headline, centre</option><option value="headline-top">Headline, top</option><option value="headline-bottom">Headline, bottom</option><option value="none">No text</option></select></div>
+        <p class="hint" id="exportNote">Frame-accurate. Best in Chrome or Edge. A full track at 1080p takes a few minutes; Spotify Canvas renders 8 silent seconds from the playhead as a seamless loop.</p>
+      </div>
+    </details>
+
+    <details open data-tab="export">
+      <summary>Stills</summary>
+      <div class="grp">
+        <div class="row wide"><label for="stillSize">Size</label><select id="stillSize" data-seg><option value="yt">YouTube thumbnail (16:9)</option><option value="ig">Instagram post (4:5)</option><option value="story">Story / Reel cover (9:16)</option><option value="square">Square (1:1)</option></select></div>
+        <div class="row wide"><label for="stillText">Text</label><select id="stillText" data-seg><option value="same">Same as video</option><option value="headline">Headline, centre</option><option value="headline-top">Headline, top</option><option value="headline-bottom">Headline, bottom</option><option value="none">No text</option></select></div>
         <div class="row wide"><label for="stillHeadline">Headline</label><input type="text" id="stillHeadline" placeholder="Uses the title"></div>
         <div class="row wide"><label for="stillArtist">Artist on stills</label><input type="checkbox" id="stillArtist"></div>
         <div class="row wide"><label for="stillPreview">Preview still</label><input type="checkbox" id="stillPreview"></div>
         <div class="btns"><button id="saveStill">Save still (PNG)</button></div>
-        <p class="hint">Spotify Canvas renders 8 seconds from the playhead, vertical, silent and looping seamlessly.</p>
-        <p class="hint" id="exportNote">Renders frame by frame, so it's exact even on a slow machine. Best in Chrome or Edge; Firefox may export with Opus audio instead of AAC. The whole track at 1080p takes a few minutes.</p>
       </div>
     </details>
 
-    <details open data-tab="release">
+    <details data-tab="release">
       <summary>Settings</summary>
       <div class="grp">
         <p class="hint">Your settings are remembered in this browser. Copy them to keep a look for another track.</p>

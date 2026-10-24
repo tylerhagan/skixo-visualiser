@@ -49,6 +49,7 @@ function buildSliders(){
 buildSliders();
 const fmtVal = v => (Math.abs(v)>=10? v.toFixed(0) : (+v).toFixed(2).replace(/0$/,''));
 function syncUI(){
+  if(typeof syncSeg==='function') setTimeout(syncSeg);
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
   for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos']) $(k).value = S[k];
   $('useWordmark').checked = S.useWordmark; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
@@ -146,19 +147,39 @@ async function loadSecBgs(){
   for(const k of ['q','l','p']){ const id=S.bgSec&&S.bgSec[k]; SECBG[k] = id ? await loadImage(`bg/${id}.jpg`) : null; }
   showSecBgs(); requestDraw();
 }
-function showSecBgs(){
-  const nm=id=>{ const it=BGLIB.find(b=>b.id===id); return it ? `${it.set} ${it.palette} ${it.name}` : '—'; };
-  const el=$('secBgs'); if(el) el.textContent = `Quiet: ${nm(S.bgSec.q)} · Lifted: ${nm(S.bgSec.l)} · Peak: ${nm(S.bgSec.p)}`;
+function showSecBgs(){ renderSlots(); }
+/* scene slots: whole track, quiet, lifted, peak. The selected slot receives the next background click. */
+function slotThumb(k){
+  if(k==='all'){ if(S.bgId) return `bg/thumbs/${S.bgId}.jpg`; if(IMGS.bg){ const c=document.createElement('canvas'); c.width=160; c.height=90; const x=c.getContext('2d'); const im=IMGS.bg, sc=Math.max(160/im.width,90/im.height); x.drawImage(im,80-im.width*sc/2,45-im.height*sc/2,im.width*sc,im.height*sc); return c.toDataURL('image/jpeg',0.7); } return ''; }
+  const id=S.bgSec&&S.bgSec[k]; return id ? `bg/thumbs/${id}.jpg` : '';
 }
+function renderSlots(){
+  const cur=$('bgTarget').value;
+  document.querySelectorAll('.slot').forEach(b=>{
+    const k=b.dataset.slot, url=slotThumb(k), th=b.querySelector('.sthumb');
+    th.style.backgroundImage = url ? `url("${url}")` : ''; th.classList.toggle('set', !!url);
+    b.setAttribute('aria-pressed', k===cur);
+    let x=b.querySelector('.x'); if(url && !x){ x=document.createElement('i'); x.className='x'; x.textContent='×'; x.title='Clear'; b.appendChild(x); } if(!url && x) x.remove();
+  });
+}
+document.querySelectorAll('.slot').forEach(b=>b.addEventListener('click', e=>{
+  const k=b.dataset.slot;
+  if(e.target.classList.contains('x')){
+    if(k==='all') $('clearBg').click();
+    else { S.bgSec=Object.assign({q:'',l:'',p:''},S.bgSec,{[k]:''}); SECBG[k]=null; persist(); requestDraw(); }
+    renderSlots(); return;
+  }
+  $('bgTarget').value=k; markBg();
+}));
 async function pickBg(id, fromUser){
   const it=BGLIB.find(b=>b.id===id); if(!it) return;
   const target = fromUser ? $('bgTarget').value : 'all';
-  if(target!=='all'){ S.bgSec = Object.assign({q:'',l:'',p:''}, S.bgSec, {[target]:id}); SECBG[target] = await loadImage(`bg/${id}.jpg`); showSecBgs(); persist(); requestDraw(); return; }
+  if(target!=='all'){ S.bgSec = Object.assign({q:'',l:'',p:''}, S.bgSec, {[target]:id}); SECBG[target] = await loadImage(`bg/${id}.jpg`); markBg(); persist(); requestDraw(); return; }
   IMGS.bg = await loadImage(`bg/${id}.jpg`); S.bgId=id; setNote('bg', `${it.set} · ${it.palette} · ${it.name}`);
   if(fromUser && S.bgMatch) matchBackground(); else persist();
   markBg(); requestDraw();
 }
-function markBg(){ document.querySelectorAll('.bgthumb').forEach(b=>b.setAttribute('aria-pressed', b.dataset.id===S.bgId)); }
+function markBg(){ const k=$('bgTarget').value, cur = k==='all' ? S.bgId : (S.bgSec&&S.bgSec[k]); document.querySelectorAll('.bgthumb').forEach(b=>b.setAttribute('aria-pressed', b.dataset.id===cur)); renderSlots(); }
 function renderBgGrid(){
   const st=$('bgSet').value, pal=$('bgPal').value, g=$('bgGrid');
   g.innerHTML=''; BGLIB.filter(b=>(st==='all'||b.set===st)&&(pal==='all'||b.palette===pal)).forEach(b=>{
@@ -1171,9 +1192,22 @@ async function loadLibrary(){
   S = Object.assign({}, DEFAULTS, grp().shared, rel().own); syncUI(); setAspect(); fillPickers();
 }
 
+/* ---------------- segmented controls: selects marked data-seg become button groups (the select stays the source of truth) ---------------- */
+const SHORT = {'720':'720p test','1080':'1080p','1440':'1440p','16:9':'16:9','9:16':'9:16','badge':'Badge','close':'Close-up','wallpaper':'Wide','auto':'Auto','manual':'Cue list','bottom-left':'Bottom left','bottom-centre':'Bottom centre','top-left':'Top left','headline':'Headline','headline-top':'Headline top','headline-bottom':'Headline bottom','off':'None','none':'None','same':'As video','one':'Current shape','both':'Both shapes','full':'Whole track','test':'15 s test','yt':'YouTube','ig':'Post 4:5','story':'Story','square':'Square','soft':'Soft','ring':'Ring','trim':'Trim'};
+function segLabel(o){ if(SHORT[o.value]) return SHORT[o.value]; return o.textContent.replace(/\s*\(.*\)/,'').replace(/ fps$/,' fps'); }
+document.querySelectorAll('select[data-seg]').forEach(sel=>{
+  const seg=document.createElement('div'); seg.className='seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label', (sel.closest('.row')?.querySelector('label')?.textContent)||sel.id);
+  [...sel.options].forEach(o=>{ const b=document.createElement('button'); b.type='button'; b.textContent=segLabel(o); b.title=o.textContent; b.dataset.v=o.value;
+    b.addEventListener('click',()=>{ sel.value=o.value; sel.dispatchEvent(new Event('input',{bubbles:true})); sel.dispatchEvent(new Event('change',{bubbles:true})); syncSeg(); }); seg.appendChild(b); });
+  sel.hidden=true; sel.after(seg);
+  if(sel.options.length>3) sel.closest('.row')?.classList.add('stack');
+});
+function syncSeg(){ document.querySelectorAll('select[data-seg]').forEach(sel=>sel.nextElementSibling.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===sel.value))); }
+syncSeg();
+
 /* ---------------- tabs ---------------- */
 (function(){
-  const rail=$('rail'), order=['Release','Settings','Track & artwork','Captions','Look','Scene','Type','Atmosphere','Poses','Nod','Motion','Glitch','Export'];
+  const rail=$('rail'), order=['Release','Settings','Track & artwork','Captions','Look','Scene','Type','Atmosphere','Poses','Nod','Motion','Glitch','Video','Stills'];
   const secs=[...rail.querySelectorAll('details[data-tab]')];
   order.forEach(n=>{ const d=secs.find(x=>x.querySelector('summary').textContent===n); if(d) rail.appendChild(d); });
   const show=name=>{ secs.forEach(d=>d.hidden = d.dataset.tab!==name); rail.querySelectorAll('[data-go]').forEach(b=>b.setAttribute('aria-selected', b.dataset.go===name)); rail.scrollTop=0; try{ localStorage.setItem('skixo-vis-tab',name); }catch(e){} };
