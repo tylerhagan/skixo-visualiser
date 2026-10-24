@@ -70,6 +70,7 @@ function onChange(k){
     if(S.poseMode==='manual' && !S.manualCues.trim() && A){ S.manualCues = cuesToText(autoCues()); $('manualCues').value = S.manualCues; }
   }
   if(k==='aspect') setAspect();
+  if(k==='captions' && A) drawTimeline();
   if(k==='font' || k==='fontCustom'){ $('fontCustomRow').hidden = S.font!=='custom'; ensureFont(); }
   if(k==='edge' || (k==='paperCol' && (S.edge||'auto')==='auto')) refreshArt();
   if(k==='bpm' && A){ A.grid = beatGrid(); showGrid(); }
@@ -154,6 +155,7 @@ function slotThumb(k){
   const id=S.bgSec&&S.bgSec[k]; return id ? `bg/thumbs/${id}.jpg` : '';
 }
 function renderSlots(){
+  if(typeof drawTimeline==='function' && A) drawTimeline();
   const cur=$('bgTarget').value;
   document.querySelectorAll('.slot').forEach(b=>{
     const k=b.dataset.slot, url=slotThumb(k), th=b.querySelector('.sthumb');
@@ -952,31 +954,53 @@ function fmtTime(t, frac){ t=Math.max(0,t); const m=Math.floor(t/60), s=t-m*60; 
 /* ---------------- timeline ---------------- */
 const tl = $('timeline'), tctx = tl.getContext('2d'); let tlBase=null;
 const POSE_COLS = ['#cfc6b2','#8e9aa0','#3d6884'];
+/* Timeline lanes: Scene (backgrounds per section), Mood (light / peak), Captions, Audio (energy and kicks). */
+const TL_G = 64;   // label gutter, css px
+const LANES = [['Scene',26],['Mood',8],['Captions',20],['Audio',46]];
 function drawTimeline(){
   const dpr = window.devicePixelRatio||1, w = tl.clientWidth, h = tl.clientHeight;
   if(!w) return;
   tl.width = w*dpr; tl.height = h*dpr;
   const c = document.createElement('canvas'); c.width=tl.width; c.height=tl.height; const x=c.getContext('2d'); x.scale(dpr,dpr);
-  if(!A){ x.fillStyle='#8e938f'; x.font='12px "Libre Franklin", sans-serif'; x.textBaseline='middle'; x.fillText('Drop a track anywhere on the page to see its sections and kicks here', 14, h/2); }
-  if(A){
-    const dur=A.dur;
-    for(let i=0;i<CUES.length;i++){ const a=CUES[i].t/dur*w, b=(i+1<CUES.length?CUES[i+1].t:dur)/dur*w; x.fillStyle=POSE_COLS[CUES[i].p]; x.globalAlpha=0.9; x.fillRect(a,h-6,b-a,6); }
-    x.globalAlpha=1; x.fillStyle='#4b535a';
-    const cols = Math.floor(w/2);
-    for(let i=0;i<cols;i++){ const t=i/cols*dur; const e=energyAt(t); const bh=Math.max(1,e*(h-14)); x.fillRect(i*2, h-8-bh, 1.4, bh); }
-    x.fillStyle='rgba(141,178,203,.55)';
-    for(const kk of A.kicks){ if(kk.s<0.45) continue; x.fillRect(kk.t/dur*w, 2, 1, 4); }
+  const gap=6, tw=w-TL_G; let y=4;
+  x.font='11px "Libre Franklin", sans-serif'; x.textBaseline='middle';
+  if(!A){ x.fillStyle='#8e938f'; x.fillText('Drop a track anywhere on the page to see its sections, scenes, captions and kicks here', 14, h/2); tlBase=c; drawPlayhead(now()); return; }
+  const dur=A.dur, X=t=>TL_G + t/dur*tw;
+  for(const [name,lh] of LANES){
+    x.fillStyle='#8e938f'; x.fillText(name, 4, y+lh/2);
+    if(name==='Scene'){
+      for(let i=0;i<CUES.length;i++){
+        const a=X(CUES[i].t), b=X(i+1<CUES.length?CUES[i+1].t:dur), im=bgFor(CUES[i].p);
+        x.save(); x.beginPath(); x.rect(a+0.5,y,b-a-1,lh); x.clip();
+        if(im){ const sc=Math.max((b-a)/im.width, lh/im.height); x.drawImage(im, (a+b)/2-im.width*sc/2, y+lh/2-im.height*sc/2, im.width*sc, im.height*sc); }
+        else { x.fillStyle=S.paperCol; x.fillRect(a,y,b-a,lh); }
+        x.restore();
+      }
+    } else if(name==='Mood'){
+      for(let i=0;i<CUES.length;i++){ const a=X(CUES[i].t), b=X(i+1<CUES.length?CUES[i+1].t:dur); x.fillStyle=POSE_COLS[CUES[i].p]; x.fillRect(a,y,b-a,lh); }
+    } else if(name==='Captions'){
+      const caps=parseCaptions(); x.fillStyle='rgba(255,255,255,0.04)'; x.fillRect(TL_G,y,tw,lh);
+      caps.forEach((cp,i)=>{ if(!cp.text) return; const a=X(cp.t), b=X(i+1<caps.length?caps[i+1].t:Math.min(dur,cp.t+6));
+        x.fillStyle='#3a4249'; x.fillRect(a+0.5,y+1,Math.max(2,b-a-1),lh-2);
+        x.save(); x.beginPath(); x.rect(a+3,y,b-a-6,lh); x.clip(); x.fillStyle='#ebe5d8'; x.fillText(cp.text, a+4, y+lh/2); x.restore(); });
+      if(!caps.length){ x.fillStyle='#5d6266'; x.fillText('No captions yet (Track tab)', TL_G+6, y+lh/2); }
+    } else {
+      x.fillStyle='#4b535a'; const cols=Math.floor(tw/2);
+      for(let i=0;i<cols;i++){ const e=energyAt(i/cols*dur), bh=Math.max(1,e*(lh-6)); x.fillRect(TL_G+i*2, y+lh-bh, 1.4, bh); }
+      x.fillStyle='rgba(141,178,203,.6)'; for(const kk of A.kicks){ if(kk.s<0.45) continue; x.fillRect(X(kk.t), y, 1, 4); }
+    }
+    y += lh + gap;
   }
   tlBase = c; drawPlayhead(now());
 }
 function drawPlayhead(t){
   if(!tlBase) return; const dpr=window.devicePixelRatio||1;
   tctx.setTransform(1,0,0,1,0,0); tctx.clearRect(0,0,tl.width,tl.height); tctx.drawImage(tlBase,0,0);
-  if(!buffer) return; const x = t/buffer.duration*tl.width;
+  if(!buffer) return; const x = (TL_G + t/buffer.duration*(tl.width/dpr-TL_G))*dpr;
   tctx.fillStyle='#ebe5d8'; tctx.fillRect(x-dpr*0.75,0,dpr*1.5,tl.height);
 }
 let dragging=false;
-function tlSeek(e){ if(!buffer) return; const r=tl.getBoundingClientRect(); seek((e.clientX-r.left)/r.width*buffer.duration); }
+function tlSeek(e){ if(!buffer) return; const r=tl.getBoundingClientRect(); seek(Math.max(0,(e.clientX-r.left-TL_G)/(r.width-TL_G))*buffer.duration); }
 tl.addEventListener('pointerdown', e=>{ dragging=true; tl.setPointerCapture(e.pointerId); tlSeek(e); });
 tl.addEventListener('pointermove', e=>{ if(dragging) tlSeek(e); });
 tl.addEventListener('pointerup', ()=>{ dragging=false; });
@@ -1158,6 +1182,7 @@ function saveLib(){
   clearTimeout(libTimer); libTimer=setTimeout(()=>store.put('library', JSON.stringify(LIB), 'library'), 300);
 }
 function fillPickers(){
+  $('projGroup').textContent = grp().name; $('projRel').textContent = rel().name;
   const g=$('groupSel'), r=$('releaseSel'), cur=rel();
   g.innerHTML = LIB.groups.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''); g.value = cur.groupId;
   r.innerHTML = LIB.releases.filter(x=>x.groupId===cur.groupId).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''); r.value = cur.id;
@@ -1202,8 +1227,12 @@ document.querySelectorAll('select[data-seg]').forEach(sel=>{
   sel.hidden=true; sel.after(seg);
   if(sel.options.length>3) sel.closest('.row')?.classList.add('stack');
 });
-function syncSeg(){ document.querySelectorAll('select[data-seg]').forEach(sel=>sel.nextElementSibling.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===sel.value))); }
+function syncTop(){ document.querySelectorAll('#frameTop button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===S.aspect)); }
+function syncSeg(){ syncTop(); document.querySelectorAll('select[data-seg]').forEach(sel=>sel.nextElementSibling.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===sel.value))); }
 syncSeg();
+
+document.querySelectorAll('#frameTop button').forEach(b=>b.addEventListener('click',()=>{ const sel=$('aspect'); sel.value=b.dataset.v; sel.dispatchEvent(new Event('input',{bubbles:true})); syncSeg(); }));
+$('exportTop').addEventListener('click', ()=>document.querySelector('[data-go="export"]').click());
 
 /* ---------------- tabs ---------------- */
 (function(){

@@ -12,21 +12,27 @@
 <body>
 
 <div class="app" id="app">
-  <section class="stagecol">
-    <div class="brand">
-      <h1><img src="assets/wordmark-bone.svg" alt="skixO" class="wm"><span>visualiser</span></h1>
+  <header class="topbar">
+    <h1 class="brand"><img src="assets/wordmark-bone.svg" alt="skixO" class="wm"><span>visualiser</span></h1>
+    <div class="project" title="Release group / release"><span id="projGroup"></span><span class="sep">/</span><strong id="projRel"></strong></div>
+    <div class="topctl">
       <div class="status" id="status">Loading track…</div>
+      <div class="seg" id="frameTop" role="group" aria-label="Frame shape"><button type="button" data-v="16:9">16:9</button><button type="button" data-v="9:16">9:16</button></div>
+      <button class="primary" id="exportTop">Export</button>
     </div>
+  </header>
+
+  <section class="stagecol">
     <div class="stagewrap" id="stagewrap"><canvas id="stage" width="1280" height="720" aria-label="Visualiser preview"></canvas></div>
+  </section>
+
+  <section class="tlbar">
     <div class="transport">
-      <button id="play" aria-label="Play" disabled><svg viewBox="0 0 16 16" id="playicon"><path d="M3 1.5v13l11-6.5z"/></svg></button>
-      <div class="timeline-wrap">
-        <canvas id="timeline" aria-label="Timeline: click to seek"></canvas>
-        <div class="legend"><span><i style="background:#cfc6b2"></i>Flat light</span><span><i style="background:#8e9aa0"></i>Side light</span><span><i style="background:#3d6884"></i>Peak face</span><span style="margin-left:auto" id="kickcount"></span></div>
-      </div>
-      <div class="time" id="time">0:00 / 0:00</div>
-      <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8" aria-label="Preview volume" title="Preview volume (not in renders)" style="width:80px;flex:none">
+      <div class="tleft"><span id="kickcount"></span></div>
+      <div class="tmid"><button id="play" aria-label="Play" disabled><svg viewBox="0 0 16 16" id="playicon"><path d="M3 1.5v13l11-6.5z"/></svg></button><div class="time" id="time">0:00 / 0:00</div></div>
+      <div class="tright"><svg viewBox="0 0 16 16" class="volicon" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2z"/><path d="M11 5.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg><input type="range" id="vol" min="0" max="1" step="0.01" value="0.8" aria-label="Preview volume" title="Preview volume (not in renders)"></div>
     </div>
+    <canvas id="timeline" aria-label="Timeline: click to seek"></canvas>
   </section>
 
   <aside class="rail" id="rail">
