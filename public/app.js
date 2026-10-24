@@ -720,10 +720,15 @@ function render(){
 function loop(){ if(!playing) return; render(); if(now()>=buffer.duration-0.01){ stop(); playhead=0; requestDraw(); return; } requestAnimationFrame(loop); }
 function play(){
   if(!buffer) return; const c=getCtx(); c.resume();
-  srcNode = c.createBufferSource(); srcNode.buffer=buffer; srcNode.connect(c.destination);
+  srcNode = c.createBufferSource(); srcNode.buffer=buffer; srcNode.connect(monitorGain());
   if(playhead>=buffer.duration-0.05) playhead=0;
   startedAt = c.currentTime - playhead; srcNode.start(0, playhead); playing=true; setIcon(); loop();
 }
+// preview volume only; renders read the decoded track directly, so this never affects exports
+let gainNode=null;
+function monitorGain(){ const c=getCtx(); if(!gainNode){ gainNode=c.createGain(); gainNode.connect(c.destination); } gainNode.gain.value=Math.pow(+$('vol').value,2); return gainNode; }
+$('vol').addEventListener('input', ()=>{ try{ localStorage.setItem('skixo-vis-vol', $('vol').value); }catch(e){} if(gainNode) monitorGain(); });
+try{ const v=localStorage.getItem('skixo-vis-vol'); if(v!==null) $('vol').value=v; }catch(e){}
 function stop(){ if(srcNode){ try{srcNode.stop();}catch(e){} srcNode.disconnect(); srcNode=null; } if(playing){ playhead = now(); playing=false; setIcon(); } }
 function setIcon(){ $('playicon').innerHTML = playing ? '<path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/>' : '<path d="M3 1.5v13l11-6.5z"/>'; $('play').setAttribute('aria-label', playing?'Pause':'Play'); }
 function seek(t){ const was=playing; stop(); playhead=Math.max(0,Math.min(buffer?buffer.duration:0,t)); if(was) play(); else requestDraw(); }
