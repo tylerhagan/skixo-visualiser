@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', useWordmark:false, lowercase:true,
-  ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4'
+  ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:''
 };
 const SLIDERS = {
   'autoPose':[
@@ -66,6 +66,7 @@ function onChange(k){
   if(k==='aspect') setAspect();
   if(k==='bpm' && A){ A.grid = beatGrid(); showGrid(); }
   if(k==='ink') wordmarkImg = null, loadWordmark();
+  if(['ink','blue','paperCol'].includes(k)){ S.look='custom'; markLook(); }
   if(k==='blue') makeClouds(S.blue);
   if(['poseMode','poseLow','poseHigh','peakCount','poseHold','manualCues','poseFade','eyeFade','blinks','snapKick'].includes(k)) rebuildCues();
   if(k==='paperCol' || k==='vignette') overlayCache = {};
@@ -87,11 +88,54 @@ document.querySelectorAll('.file input[type=file]').forEach(inp=>{
   wrap.append(btn, note); inp.after(wrap);
 });
 
+/* Looks: a palette for paper, ink and accent, plus an optional recolour of the artwork's blue.
+   The recolour keeps each pixel's lightness, so grain and shading survive. */
+const LOOKS = [
+  {id:'paper', name:'Paper blue', paperCol:'#f8f2e4', ink:'#1d2023', blue:'#3d6884', artTint:''},
+  {id:'dusk',  name:'Dusk',       paperCol:'#f4e4d6', ink:'#2a1f2b', blue:'#8a4f6e', artTint:'#8a4f6e'},
+  {id:'sage',  name:'Sage',       paperCol:'#eef0e4', ink:'#1f2620', blue:'#5e7a5a', artTint:'#5e7a5a'},
+  {id:'riso',  name:'Riso red',   paperCol:'#f6efe6', ink:'#1f1b1b', blue:'#c4473a', artTint:'#c4473a'},
+  {id:'night', name:'Night',      paperCol:'#1b2230', ink:'#ece4d2', blue:'#7f9fc6', artTint:''}
+];
+const TINTED = new WeakMap();
+function tintCanvas(bmp){
+  const key = S.artTint; if(!key) return bmp;
+  const hit = TINTED.get(bmp); if(hit && hit.key===key) return hit.c;
+  const c=document.createElement('canvas'); c.width=bmp.width; c.height=bmp.height;
+  const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(bmp,0,0);
+  const id=x.getImageData(0,0,c.width,c.height), d=id.data;
+  const tr=parseInt(key.slice(1,3),16), tg=parseInt(key.slice(3,5),16), tb=parseInt(key.slice(5,7),16);
+  const k = 1/94;   // luminance of the original blue
+  for(let i=0;i<d.length;i+=4){
+    const r=d[i], g=d[i+1], b=d[i+2], w=Math.min(1,Math.max(0,((b-r)-18)/34));
+    if(w<=0) continue;
+    const L=(0.3*r+0.59*g+0.11*b)*k;
+    d[i]=r+(Math.min(255,tr*L)-r)*w; d[i+1]=g+(Math.min(255,tg*L)-g)*w; d[i+2]=b+(Math.min(255,tb*L)-b)*w;
+  }
+  x.putImageData(id,0,0); TINTED.set(bmp,{key,c}); return c;
+}
+function applyLook(id){
+  const L = LOOKS.find(l=>l.id===id); if(!L) return;
+  Object.assign(S, {paperCol:L.paperCol, ink:L.ink, blue:L.blue, artTint:L.artTint, look:L.id});
+  syncUI(); overlayCache={}; makeClouds(S.blue); wordmarkImg=null; loadWordmark();
+  for(const k of ['a','b','c','h']) if(IMGS[k]) IMGS[k]=maskPose(IMGS[k]._src);
+  NOD_SLOTS.forEach(buildNod); markLook(); persist(); requestDraw();
+}
+function markLook(){ document.querySelectorAll('.look').forEach(b=>b.setAttribute('aria-pressed', b.dataset.id===S.look)); }
+(function buildLooks(){
+  const box=document.getElementById('looks'); if(!box) return;
+  for(const L of LOOKS){
+    const b=document.createElement('button'); b.type='button'; b.className='look'; b.dataset.id=L.id;
+    b.innerHTML=`<span class="sw" style="background:${L.paperCol}"><i style="background:${L.blue}"></i><i style="background:${L.ink}"></i></span>${L.name}`;
+    b.addEventListener('click', ()=>applyLook(L.id)); box.appendChild(b);
+  }
+})();
+
 function maskPose(bmp){
   const n = Math.max(bmp.width, bmp.height);
   const c = document.createElement('canvas'); c.width = c.height = n;
   const x = c.getContext('2d');
-  x.drawImage(bmp, (n-bmp.width)/2, (n-bmp.height)/2);
+  x.drawImage(tintCanvas(bmp), (n-bmp.width)/2, (n-bmp.height)/2);
   x.globalCompositeOperation = 'destination-in';
   const g = x.createRadialGradient(n/2,n/2,n*0.47,n/2,n/2,n*0.5);
   g.addColorStop(0,'rgba(0,0,0,1)'); g.addColorStop(1,'rgba(0,0,0,0)');
@@ -138,7 +182,7 @@ function buildNod(slot){
   const base = slot.endsWith('c') ? IMGS.b : slot.endsWith('p') ? IMGS.c : IMGS.a; if(!base) return;
   const n = base.width, [ox,oy] = alignOffset(base._src, raw);
   const head = document.createElement('canvas'); head.width=head.height=n; const hx=head.getContext('2d');
-  hx.drawImage(raw, ox*n, oy*n, n, n);
+  hx.drawImage(tintCanvas(raw), ox*n, oy*n, n, n);
   hx.globalCompositeOperation='destination-in'; hx.filter=`blur(${n*0.025}px)`; hx.fillStyle='#000';
   // everything above the collar comes from the nod frame; the seam sits low in the hoodie, where both frames match
   hx.fillRect(-n*0.1, -n*0.1, n*1.2, n*(0.1+0.76));
@@ -842,7 +886,7 @@ const store = (()=>{
 $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setStatus('Saved files forgotten. Reload to return to the starter artwork.'); });
 
 /* ---------------- boot ---------------- */
-syncUI(); bindUI(); setAspect();
+syncUI(); bindUI(); setAspect(); markLook();
 (async ()=>{
   try{
     const starter = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/peak-face.jpg', w:'assets/wallpaper.jpg',

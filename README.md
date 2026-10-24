@@ -36,3 +36,13 @@ npm run dev
 ```
 
 This serves `public/` without the password gate.
+
+## Roadmap
+
+1. **Release groups.** Albums, playlists or series that share a look and scene, with each release inside storing its own track, titles and cue overrides. Switch a release from a list; export/import a group as a file for backup.
+2. **Scenes.** Moving backgrounds behind a calm mascot, each changing between quiet, lifted and peak sections:
+   - Paper and clouds (current)
+   - Time-of-day sky drifting across the track
+   - Slow halftone rays, record grooves, falling dashes
+   - Glitch and surreal: datamosh smears, scanline tearing and RGB split on hits, pixel-sort streaks, VHS tracking roll, a melting or tiling mirror world, floating repeated mascots
+3. **Tabs:** Track, Look, Motion, Export, with sliders under a collapsed "Fine-tune" in each.

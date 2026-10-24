@@ -72,3 +72,8 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-s
 .pick button{padding:4px 10px;font-size:12px;flex:none}
 .note{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .note.mine{color:var(--fg)}
+.looks{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.look{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:8px;font-size:12px;text-align:left}
+.look[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.sw{display:flex;gap:4px;align-items:center;width:100%;height:26px;border-radius:3px;padding:0 6px}
+.sw i{width:12px;height:12px;border-radius:50%;display:block}
