@@ -22,7 +22,7 @@
       <button id="play" aria-label="Play" disabled><svg viewBox="0 0 16 16" id="playicon"><path d="M3 1.5v13l11-6.5z"/></svg></button>
       <div class="timeline-wrap">
         <canvas id="timeline" aria-label="Timeline: click to seek"></canvas>
-        <div class="legend"><span><i style="background:#cfc6b2"></i>Eyes closed</span><span><i style="background:#8e9aa0"></i>Closed, side light</span><span><i style="background:#3d6884"></i>Eyes open</span><span style="margin-left:auto" id="kickcount"></span></div>
+        <div class="legend"><span><i style="background:#cfc6b2"></i>Flat light</span><span><i style="background:#8e9aa0"></i>Side light</span><span><i style="background:#3d6884"></i>Peak face</span><span style="margin-left:auto" id="kickcount"></span></div>
       </div>
       <div class="time" id="time">0:00 / 0:00</div>
     </div>
@@ -32,14 +32,14 @@
     <details open>
       <summary>Track &amp; artwork</summary>
       <div class="grp">
-        <p class="hint">Drop an audio file or image anywhere on the page, or pick one here. Files stay in this browser and are remembered next time. A half-open frame is optional; if you add one, blinks and eye changes pass through it.</p>
+        <p class="hint">Drop an audio file or image anywhere on the page, or pick one here. Files stay in this browser and are remembered next time. Peak face is optional: the widest smile (or a rare peek) for the biggest lift. Without it, side light carries the peak.</p>
         <p class="hint">Track: <span id="trackName" style="color:var(--fg)">none yet</span></p>
         <div class="files">
           <div class="file"><label for="f-audio">Track</label><input type="file" id="f-audio" accept="audio/*"></div>
-          <div class="file"><label for="f-a">Eyes closed</label><input type="file" id="f-a" accept="image/*"></div>
+          <div class="file"><label for="f-a">Flat light</label><input type="file" id="f-a" accept="image/*"></div>
           <div class="file"><label for="f-b">Side light</label><input type="file" id="f-b" accept="image/*"></div>
-          <div class="file"><label for="f-c">Eyes open</label><input type="file" id="f-c" accept="image/*"></div>
-          <div class="file"><label for="f-h">Half-open</label><input type="file" id="f-h" accept="image/*"></div>
+          <div class="file"><label for="f-c">Peak face</label><input type="file" id="f-c" accept="image/*"></div>
+          <div class="file"><label for="f-h">In-between</label><input type="file" id="f-h" accept="image/*"></div>
           <div class="file"><label for="f-w">Wide scene</label><input type="file" id="f-w" accept="image/*"></div>
         </div>
         <div class="row wide"><label for="layout">Layout</label><select id="layout"><option value="badge">Badge on paper</option><option value="wallpaper">Wide scene</option></select></div>
@@ -58,19 +58,21 @@
           <div class="btns" style="margin-top:8px"><button id="fillCues">Fill from track energy</button></div>
         </div>
         <div id="g-posefx" class="grp" style="padding:0"></div>
-        <div class="row wide"><label for="snapKick">Eyes on a kick</label><input type="checkbox" id="snapKick"></div>
+        <div class="row wide"><label for="snapKick">Peak on a kick</label><input type="checkbox" id="snapKick"></div>
       </div>
     </details>
 
     <details open>
       <summary>Nod</summary>
       <div class="grp">
-        <p class="hint">Add nod frames to make the head bob on the beat. Only the head is taken from each frame, aligned over the existing body. Nodding uses the side-light frames, so it runs once the track lifts.</p>
+        <p class="hint">Add nod frames to make the head bob on the beat. Only the head is taken from each frame, aligned over the existing body. Each set nods in its own sections: flat light when quiet, side light as it lifts, peak face at the top. Name files like nod-side-1.png and they drop into place.</p>
         <div class="files">
-          <div class="file"><label for="f-n1c">Closed, slight</label><input type="file" id="f-n1c" accept="image/*"></div>
-          <div class="file"><label for="f-n2c">Closed, deep</label><input type="file" id="f-n2c" accept="image/*"></div>
-          <div class="file"><label for="f-n1o">Open, slight</label><input type="file" id="f-n1o" accept="image/*"></div>
-          <div class="file"><label for="f-n2o">Open, deep</label><input type="file" id="f-n2o" accept="image/*"></div>
+          <div class="file"><label for="f-n1c">Side, slight</label><input type="file" id="f-n1c" accept="image/*"></div>
+          <div class="file"><label for="f-n2c">Side, deep</label><input type="file" id="f-n2c" accept="image/*"></div>
+          <div class="file"><label for="f-n1f">Flat, slight</label><input type="file" id="f-n1f" accept="image/*"></div>
+          <div class="file"><label for="f-n2f">Flat, deep</label><input type="file" id="f-n2f" accept="image/*"></div>
+          <div class="file"><label for="f-n1p">Peak, slight</label><input type="file" id="f-n1p" accept="image/*"></div>
+          <div class="file"><label for="f-n2p">Peak, deep</label><input type="file" id="f-n2p" accept="image/*"></div>
         </div>
         <div id="g-nod" class="grp" style="padding:0"></div>
         <div class="row wide"><label for="nodEvery">Nod every</label><select id="nodEvery"><option value="1">Beat</option><option value="2">2 beats</option><option value="4">Bar</option></select></div>
