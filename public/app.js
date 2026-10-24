@@ -11,25 +11,20 @@ const DEFAULTS = {
   bgDrift:0.5, glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', capPos:'bottom', capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
-  'autoPose':[
-    ['poseLow','Side light at',0,1,0.01],['peakCount','Peak moments',0,4,1],
-    ['poseHold','Hold (s)',1,30,0.5]],
-  'g-posefx':[
-    ['poseFade','Light change (s)',0.2,8,0.1]],
-  'g-nod':[
-    ['nod','Nod depth',0,1,0.01],['nodGate','Nod from energy',0,1,0.01]],
-  'g-motion':[
-    ['badgeSize','Portrait size',0.4,1.0,0.01],['portraitY','Vertical position',-0.3,0.3,0.01],['breathe','Breathing',0,1,0.01],['kick','Kick pulse',0,1,0.01],
-    ['sway','Sway',0,1,0.01],['rings','Kick rings',0,1,0.01],['misprint','Misprint',0,1,0.01],['spectrum','Spectrum ticks',0,1,0.01],
-    ['fadeIn','Fade in (s)',0,10,0.1],['fadeOut','Fade out (s)',0,10,0.1]],
+  'autoPose':[['poseLow','Side light at',0,1,0.01],['peakCount','Peak moments',0,4,1],['poseHold','Hold (s)',1,30,0.5]],
+  'g-posefx':[['poseFade','Light change (s)',0.2,8,0.1]],
+  'g-fades':[['fadeIn','Fade in (s)',0,10,0.1],['fadeOut','Fade out (s)',0,10,0.1]],
+  'g-layout':[['badgeSize','Portrait size',0.4,1.0,0.01],['portraitY','Vertical position',-0.3,0.3,0.01]],
+  'g-bg':[['bgOpacity','Background opacity',0,1,0.01],['bgBlur','Background blur',0,1,0.01],['bgDrift','Background drift',0,1,0.01]],
+  'g-motion':[['breathe','Breathing',0,1,0.01],['kick','Kick pulse',0,1,0.01],['sway','Sway',0,1,0.01],['rings','Kick rings',0,1,0.01],
+    ['spectrum','Spectrum ticks',0,1,0.01],['misprint','Misprint',0,1,0.01]],
+  'g-nod':[['nod','Nod depth',0,1,0.01],['nodGate','Nod from energy',0,1,0.01]],
   'g-typeS':[['textScale','Text size',0.5,2.5,0.05]],
   'g-caps':[['capSize','Caption size',0.5,2.5,0.05]],
-  'g-glitch':[
-    ['glitch','Glitch amount',0,1,0.01],['glitchQuiet','In quiet parts',0,2,0.05],['glitchLift','In lifted parts',0,2,0.05],['glitchPeak','At peaks',0,2,0.05],['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],
-    ['glitchBlocks','Block shifts',0,1,0.01],['glitchRoll','VHS roll',0,1,0.01]],
-  'g-atmos':[
-    ['dashes','Glitch dashes',0,1,0.01],['dashSpeed','Dash speed',0,1,0.01],['clouds','Clouds',0,1,0.01],
-    ['cloudSpeed','Cloud drift',0,1,0.01],['bgDrift','Background drift',0,1,0.01],['bgOpacity','Background opacity',0,1,0.01],['bgBlur','Background blur',0,1,0.01],['light','Window light',0,1,0.01],['grain','Print grain',0,1,0.01],['vignette','Vignette',0,1,0.01]]
+  'g-glitch':[['glitch','Glitch amount',0,1,0.01],['glitchQuiet','In quiet parts',0,2,0.05],['glitchLift','In lifted parts',0,2,0.05],['glitchPeak','At peaks',0,2,0.05],
+    ['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],['glitchBlocks','Block shifts',0,1,0.01],['glitchRoll','VHS roll',0,1,0.01]],
+  'g-atmos':[['dashes','Glitch dashes',0,1,0.01],['dashSpeed','Dash speed',0,1,0.01],['clouds','Clouds',0,1,0.01],['cloudSpeed','Cloud drift',0,1,0.01],
+    ['light','Window light',0,1,0.01],['grain','Print grain',0,1,0.01],['vignette','Vignette',0,1,0.01]]
 };
 let S = Object.assign({}, DEFAULTS);
 try{ const saved = JSON.parse(localStorage.getItem('skixo-vis-settings')||'null'); if(saved) S = Object.assign({}, DEFAULTS, saved); }catch(e){}
@@ -1236,7 +1231,7 @@ $('exportTop').addEventListener('click', ()=>document.querySelector('[data-go="e
 
 /* ---------------- tabs ---------------- */
 (function(){
-  const rail=$('rail'), order=['Release','Settings','Track & artwork','Captions','Look','Scene','Type','Atmosphere','Poses','Nod','Motion','Glitch','Video','Stills'];
+  const rail=$('rail'), order=[];
   const secs=[...rail.querySelectorAll('details[data-tab]')];
   order.forEach(n=>{ const d=secs.find(x=>x.querySelector('summary').textContent===n); if(d) rail.appendChild(d); });
   const show=name=>{ secs.forEach(d=>d.hidden = d.dataset.tab!==name); rail.querySelectorAll('[data-go]').forEach(b=>b.setAttribute('aria-selected', b.dataset.go===name)); rail.scrollTop=0; try{ localStorage.setItem('skixo-vis-tab',name); }catch(e){} };
