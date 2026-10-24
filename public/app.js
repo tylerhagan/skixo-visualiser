@@ -115,6 +115,24 @@ function tintCanvas(bmp){
   }
   x.putImageData(id,0,0); TINTED.set(bmp,{key,c}); return c;
 }
+/* Match look to background: paper from the lightest tones, ink from the darkest,
+   accent from the most saturated mid-tones. Sets a custom look and recolours the art to suit. */
+function matchBackground(){
+  const im=IMGS.bg; if(!im) return false;
+  const c=document.createElement('canvas'); c.width=160; c.height=90; const x=c.getContext('2d',{willReadFrequently:true});
+  x.drawImage(im,0,0,160,90); const d=x.getImageData(0,0,160,90).data, px=[];
+  for(let i=0;i<d.length;i+=4){ const r=d[i],g=d[i+1],b=d[i+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b);
+    px.push({r,g,b,l:0.3*r+0.59*g+0.11*b, s: mx ? (mx-mn)/mx : 0}); }
+  const avg=a=>'#'+['r','g','b'].map(k=>Math.round(a.reduce((t,p)=>t+p[k],0)/a.length).toString(16).padStart(2,'0')).join('');
+  const byL=[...px].sort((a,b)=>a.l-b.l), n=px.length;
+  const ink=avg(byL.slice(0, n*0.06|0)), paper=avg(byL.slice(n*0.9|0));
+  const mid=px.filter(p=>p.l>60 && p.l<170).sort((a,b)=>b.s-a.s); const acc=avg(mid.slice(0, Math.max(10, mid.length*0.1|0)));
+  // deepen the accent a touch so the disc holds against the background
+  const deep='#'+[1,3,5].map(i=>Math.round(parseInt(acc.slice(i,i+2),16)*0.82).toString(16).padStart(2,'0')).join('');
+  Object.assign(S,{paperCol:paper, ink, blue:deep, artTint:deep, look:'custom'});
+  syncUI(); refreshArt(); persist(); return true;
+}
+
 function applyLook(id){
   const L = LOOKS.find(l=>l.id===id); if(!L) return;
   Object.assign(S, {paperCol:L.paperCol, ink:L.ink, blue:L.blue, artTint:L.artTint, look:L.id});
@@ -905,6 +923,7 @@ const store = (()=>{
     clear:()=> tx('readwrite', o=>o.clear()).catch(()=>{})
   };
 })();
+$('matchBg').addEventListener('click', ()=>{ if(!matchBackground()) setStatus('Load a background first, then match.'); });
 $('clearBg').addEventListener('click', async ()=>{ IMGS.bg=null; await store.put('img-bg', null, ''); setNote('bg','Empty'); requestDraw(); });
 $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setStatus('Saved files forgotten. Reload to return to the starter artwork.'); });
 
