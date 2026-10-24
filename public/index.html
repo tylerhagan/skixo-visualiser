@@ -30,7 +30,10 @@
   </section>
 
   <aside class="rail" id="rail">
-    <details open>
+    <nav class="tabs" role="tablist" aria-label="Panels">
+      <button role="tab" data-go="release">Release</button><button role="tab" data-go="track">Track</button><button role="tab" data-go="look">Look</button><button role="tab" data-go="motion">Motion</button><button role="tab" data-go="export">Export</button>
+    </nav>
+    <details open data-tab="release">
       <summary>Release</summary>
       <div class="grp">
         <div class="row wide"><label for="groupSel">Group</label><select id="groupSel"></select></div>
@@ -38,12 +41,14 @@
         <div class="btns"><button id="newRelease">New release</button><button id="newGroup">New group</button></div>
         <div class="btns"><button id="renameRelease">Rename release</button><button id="renameGroup">Rename group</button></div>
         <p class="hint">Releases in a group share its look, motion and artist line. Each release keeps its own track, title and cues.</p>
+        <div class="btns"><button id="exportGroup">Save group to file</button><button id="importGroup">Load group file</button></div>
+        <input type="file" id="importFile" accept=".json,application/json" class="vh" aria-label="Group file">
       </div>
     </details>
-    <details open>
+    <details open data-tab="track">
       <summary>Track &amp; artwork</summary>
       <div class="grp">
-        <p class="hint">Drop an audio file or image anywhere on the page, or pick one here. Files stay in this browser and are remembered next time. Peak face is optional: the widest smile (or a rare peek) for the biggest lift. Without it, side light carries the peak.</p>
+        <p class="hint">Drop an audio file or image anywhere on the page, or pick one here. Files stay in this browser and are remembered next time. Peak face is optional; without it, side light carries the peak.</p>
         <span id="trackName" hidden></span>
         <div class="files">
           <div class="file"><label for="f-audio">Track</label><input type="file" id="f-audio" accept="audio/*"></div>
@@ -51,20 +56,12 @@
           <div class="file"><label for="f-b">Side light</label><input type="file" id="f-b" accept="image/*"></div>
           <div class="file"><label for="f-c">Peak face</label><input type="file" id="f-c" accept="image/*"></div>
           <div class="file"><label for="f-h">In-between</label><input type="file" id="f-h" accept="image/*"></div>
-          <div class="file"><label for="f-bg">Background</label><input type="file" id="f-bg" accept="image/*"></div>
           <div class="file"><label for="f-w">Wide scene</label><input type="file" id="f-w" accept="image/*"></div>
-          <div class="row wide"><label for="bgSet">Scenes</label><select id="bgSet"><option value="all">All sets</option><option value="wistful">Wistful</option><option value="surreal">Surreal</option><option value="glitch">Glitch</option></select></div>
-          <div class="row wide"><label for="bgPal">Palette</label><select id="bgPal"><option value="all">All palettes</option><option value="dusk">Dusk</option><option value="night">Night</option><option value="riso">Riso red</option><option value="sage">Sage</option></select></div>
-          <div class="bggrid" id="bgGrid"></div>
-          <div class="row wide"><label for="bgMatch">Match look</label><input type="checkbox" id="bgMatch"></div>
-          <div class="btns"><button id="matchBg">Match look to background</button><button id="clearBg">Remove background</button></div>
         </div>
-        <div class="row wide"><label for="layout">Layout</label><select id="layout"><option value="badge">Badge on paper</option><option value="close">Close-up</option><option value="wallpaper">Wide scene (still image)</option></select></div>
-        <div class="row wide"><label for="aspect">Frame</label><select id="aspect"><option value="16:9">16:9 · YouTube</option><option value="9:16">9:16 · Shorts / Reels</option></select></div>
       </div>
     </details>
 
-    <details open>
+    <details open data-tab="motion">
       <summary>Poses</summary>
       <div class="grp" id="g-poses">
         <div class="row wide"><label for="poseMode">Changes</label><select id="poseMode"><option value="auto">Follow the track's energy</option><option value="manual">My own cue list</option></select></div>
@@ -79,7 +76,7 @@
       </div>
     </details>
 
-    <details open>
+    <details open data-tab="motion">
       <summary>Nod</summary>
       <div class="grp">
         <p class="hint">Add nod frames to make the head bob on the beat. Only the head is taken from each frame, aligned over the existing body. Each set nods in its own sections: flat light when quiet, side light as it lifts, peak face at the top. Name files like nod-side-1.png and they drop into place.</p>
@@ -98,17 +95,24 @@
       </div>
     </details>
 
-    <details open>
+    <details open data-tab="motion">
       <summary>Motion</summary>
       <div class="grp" id="g-motion"></div>
     </details>
 
-    <details>
+    <details open data-tab="motion">
+      <summary>Glitch</summary>
+      <div class="grp" id="g-glitch">
+        <p class="hint">Real glitches on the hits: scanline tearing, colour splits, block shifts and a VHS roll. Strongest at the peak moments, with a burst at each section change.</p>
+      </div>
+    </details>
+
+    <details open data-tab="look">
       <summary>Atmosphere</summary>
       <div class="grp" id="g-atmos"></div>
     </details>
 
-    <details>
+    <details open data-tab="look">
       <summary>Type</summary>
       <div class="grp" id="g-type">
         <div class="row wide"><label for="title">Title</label><input type="text" id="title"></div>
@@ -120,7 +124,23 @@
       </div>
     </details>
 
-    <details open>
+    <details open data-tab="look">
+      <summary>Scene</summary>
+      <div class="grp">
+        <div class="row wide"><label for="layout">Layout</label><select id="layout"><option value="badge">Badge on paper</option><option value="close">Close-up</option><option value="wallpaper">Wide scene (still image)</option></select></div>
+        <div class="row wide"><label for="aspect">Frame</label><select id="aspect"><option value="16:9">16:9 · YouTube</option><option value="9:16">9:16 · Shorts / Reels</option></select></div>
+        <div class="files">
+          <div class="file"><label for="f-bg">Background</label><input type="file" id="f-bg" accept="image/*"></div>
+          <div class="row wide"><label for="bgSet">Scenes</label><select id="bgSet"><option value="all">All sets</option><option value="wistful">Wistful</option><option value="surreal">Surreal</option><option value="glitch">Glitch</option></select></div>
+          <div class="row wide"><label for="bgPal">Palette</label><select id="bgPal"><option value="all">All palettes</option><option value="dusk">Dusk</option><option value="night">Night</option><option value="riso">Riso red</option><option value="sage">Sage</option></select></div>
+          <div class="bggrid" id="bgGrid"></div>
+          <div class="row wide"><label for="bgMatch">Match look</label><input type="checkbox" id="bgMatch"></div>
+          <div class="btns"><button id="matchBg">Match look to background</button><button id="clearBg">Remove background</button></div>
+        </div>
+      </div>
+    </details>
+
+    <details open data-tab="look">
       <summary>Look</summary>
       <div class="grp">
         <div class="looks" id="looks"></div>
@@ -133,7 +153,7 @@
       </div>
     </details>
 
-    <details open>
+    <details open data-tab="export">
       <summary>Export</summary>
       <div class="grp">
         <div class="row wide"><label for="res">Size</label><select id="res"><option value="1080">1080p (1920×1080)</option><option value="1440">1440p (2560×1440)</option><option value="720">720p, quick test</option></select></div>
@@ -145,7 +165,7 @@
       </div>
     </details>
 
-    <details>
+    <details open data-tab="release">
       <summary>Settings</summary>
       <div class="grp">
         <p class="hint">Your settings are remembered in this browser. Copy them to keep a look for another track.</p>

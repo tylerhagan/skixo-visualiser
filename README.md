@@ -39,10 +39,10 @@ This serves `public/` without the password gate.
 
 ## Roadmap
 
-1. **Release groups** (done): groups share look and motion; releases keep their own track, titles and cues. Still to do: export/import a group as a file for backup, and per-group artwork.
-2. **Scenes.** Moving backgrounds behind a calm mascot, each changing between quiet, lifted and peak sections:
-   - Paper and clouds (current)
-   - Time-of-day sky drifting across the track
-   - Slow halftone rays, record grooves, falling dashes
-   - Glitch and surreal: datamosh smears, scanline tearing and RGB split on hits, pixel-sort streaks, VHS tracking roll, a melting or tiling mirror world, floating repeated mascots
-3. **Tabs:** Track, Look, Motion, Export, with sliders under a collapsed "Fine-tune" in each.
+Done: release groups with shared looks, group backup files, looks with artwork recolouring, background library (sets x palettes) with opacity, blur and drift, glitch layer (tearing, colour split, block shifts, VHS roll, section bursts), tabbed panel.
+
+Next:
+1. Section-aware scenes: a different background (or glitch level) for quiet, lifted and peak sections.
+2. Procedural scenes: time-of-day sky, halftone rays, record grooves, falling dashes.
+3. Per-group artwork (different mascot sets per group).
+4. More glitch: pixel-sort streaks, datamosh smear between scenes, mirrored/tiled world, floating repeated mascots.

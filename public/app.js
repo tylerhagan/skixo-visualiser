@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', useWordmark:false, lowercase:true,
-  bgDrift:0.5, bgOpacity:1, bgBlur:0, bgId:'', bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, glitch:0, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[
@@ -22,6 +22,9 @@ const SLIDERS = {
     ['badgeSize','Portrait size',0.4,1.0,0.01],['portraitY','Vertical position',-0.3,0.3,0.01],['breathe','Breathing',0,1,0.01],['kick','Kick pulse',0,1,0.01],
     ['sway','Sway',0,1,0.01],['rings','Kick rings',0,1,0.01],['misprint','Misprint',0,1,0.01],['spectrum','Spectrum ticks',0,1,0.01],
     ['fadeIn','Fade in (s)',0,10,0.1],['fadeOut','Fade out (s)',0,10,0.1]],
+  'g-glitch':[
+    ['glitch','Glitch amount',0,1,0.01],['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],
+    ['glitchBlocks','Block shifts',0,1,0.01],['glitchRoll','VHS roll',0,1,0.01]],
   'g-atmos':[
     ['dashes','Glitch dashes',0,1,0.01],['dashSpeed','Dash speed',0,1,0.01],['clouds','Clouds',0,1,0.01],
     ['cloudSpeed','Cloud drift',0,1,0.01],['bgDrift','Background drift',0,1,0.01],['bgOpacity','Background opacity',0,1,0.01],['bgBlur','Background blur',0,1,0.01],['light','Window light',0,1,0.01],['grain','Print grain',0,1,0.01],['vignette','Vignette',0,1,0.01]]
@@ -640,6 +643,7 @@ function frame(ctx, W, H, t){
   }
 
   drawText(ctx,W,H,U,tall,t);
+  if(S.glitch>0) glitchFX(ctx,W,H,U,t);
 
   // texture
   ctx.globalCompositeOperation='multiply'; ctx.globalAlpha=1; ctx.drawImage(overlay(W,H),0,0);
@@ -658,6 +662,52 @@ function frame(ctx, W, H, t){
   if(f<1){ ctx.globalAlpha=1-f; ctx.fillStyle=S.paperCol; ctx.fillRect(0,0,W,H); }
   ctx.restore();
 }
+/* ---------------- glitch post-effects (stateless: driven by t, hits and sections) ---------------- */
+const GL = {};
+function glScratch(k,W,H){ let c=GL[k]; if(!c || c.width!==W || c.height!==H){ c=GL[k]=document.createElement('canvas'); c.width=W; c.height=H; } return c; }
+function glitchLevel(t){
+  if(!A) return 0;
+  const hat=hitEnv(A.hats,t,0.07), kick=hitEnv(A.kicks,t,0.1,0.6);
+  let g = Math.max(hat*0.7, kick);
+  const ps = poseState(t); g *= ps.to===2 ? 1.6 : ps.to===1 ? 1 : 0.45;
+  for(const c of CUES){ const a=t-c.t; if(a>=0 && a<0.45) g=Math.max(g, 1.4*(1-a/0.45)); }   // burst at section changes
+  return Math.min(1.6, g*S.glitch);
+}
+function glitchFX(ctx,W,H,U,t){
+  const g = glitchLevel(t); if(g<0.06) return;
+  const f = Math.floor(t*24), R = k=>hash(f*131+k);
+  const src = glScratch('src',W,H), sx=src.getContext('2d'); sx.globalCompositeOperation='copy'; sx.drawImage(ctx.canvas,0,0);
+  ctx.save(); ctx.globalAlpha=1;
+  if(S.glitchRoll>0 && g>0.7 && R(1) < 0.35*S.glitchRoll){   // VHS roll with a tracking band
+    const dy = Math.round((R(2)*0.25+0.05)*H*Math.min(1,g));
+    ctx.globalCompositeOperation='copy'; ctx.drawImage(src,0,dy); ctx.drawImage(src,0,dy-H);
+    ctx.globalCompositeOperation='source-over'; ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fillRect(0,dy-U*0.012,W,U*0.02);
+    sx.drawImage(ctx.canvas,0,0);
+  }
+  if(S.glitchTear>0){   // horizontal bands shifted sideways
+    const n = Math.round(2 + 10*g*S.glitchTear);
+    for(let i=0;i<n;i++){ const y=R(10+i)*H, h=(0.004+R(40+i)*0.05)*H, dx=(R(70+i)-0.5)*U*0.12*g*S.glitchTear; ctx.drawImage(src, 0,y,W,h, dx,y,W,h); }
+  }
+  if(S.glitchBlocks>0){   // rectangles copied out of place
+    const n = Math.round(6*g*S.glitchBlocks);
+    for(let i=0;i<n;i++){ const w=(0.04+R(100+i)*0.18)*W, h=(0.02+R(130+i)*0.08)*H, x=R(160+i)*(W-w), y=R(190+i)*(H-h);
+      ctx.drawImage(src, x,y,w,h, x+(R(220+i)-0.5)*U*0.15, y+(R(250+i)-0.5)*U*0.03, w,h); }
+  }
+  if(S.glitchSplit>0){   // red and cyan copies pulled apart
+    const d = U*0.012*g*S.glitchSplit; const base = glScratch('base',W,H), bx=base.getContext('2d');
+    bx.globalCompositeOperation='copy'; bx.drawImage(ctx.canvas,0,0);
+    for(const [col,sign] of [['#ff0000',1],['#00ffff',-1]]){
+      const c = glScratch('ch'+sign,W,H), x=c.getContext('2d');
+      x.globalCompositeOperation='copy'; x.drawImage(base,0,0); x.globalCompositeOperation='multiply'; x.fillStyle=col; x.fillRect(0,0,W,H);
+      if(sign>0){ ctx.globalCompositeOperation='copy'; ctx.drawImage(c, d,0); } else { ctx.globalCompositeOperation='lighter'; ctx.drawImage(c, -d, d*0.3); }
+    }
+  }
+  ctx.globalCompositeOperation='multiply'; ctx.globalAlpha=Math.min(0.5,0.35*g);   // scanlines
+  ctx.fillStyle='#777'; const step=Math.max(2,Math.round(U/270));
+  for(let y=(f%2);y<H;y+=step*2) ctx.fillRect(0,y,W,step*0.5);
+  ctx.restore();
+}
+
 function drawAtmos(ctx,W,H,U,t,hat,amt){
   // clouds
   if(S.clouds>0 && CLOUDS.length){
@@ -965,7 +1015,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','bgDrift','bgOpacity','bgBlur','bgId','light','grain','vignette','artist','textPos','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','light','grain','vignette','artist','textPos','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
@@ -1009,6 +1059,35 @@ async function loadLibrary(){
   }
   S = Object.assign({}, DEFAULTS, grp().shared, rel().own); syncUI(); setAspect(); fillPickers();
 }
+
+/* ---------------- tabs ---------------- */
+(function(){
+  const rail=$('rail'), order=['Release','Settings','Track & artwork','Look','Scene','Type','Atmosphere','Poses','Nod','Motion','Glitch','Export'];
+  const secs=[...rail.querySelectorAll('details[data-tab]')];
+  order.forEach(n=>{ const d=secs.find(x=>x.querySelector('summary').textContent===n); if(d) rail.appendChild(d); });
+  const show=name=>{ secs.forEach(d=>d.hidden = d.dataset.tab!==name); rail.querySelectorAll('[data-go]').forEach(b=>b.setAttribute('aria-selected', b.dataset.go===name)); rail.scrollTop=0; try{ localStorage.setItem('skixo-vis-tab',name); }catch(e){} };
+  rail.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
+  let start='track'; try{ start=localStorage.getItem('skixo-vis-tab')||'track'; }catch(e){} show(start);
+})();
+
+/* ---------------- group backup ---------------- */
+$('exportGroup').addEventListener('click', ()=>{
+  saveLib(); const g=grp(); const data={kind:'skixo-visualiser-group', version:1, group:g, releases:LIB.releases.filter(r=>r.groupId===g.id)};
+  const name=g.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'group';
+  saveBlob(new Blob([JSON.stringify(data,null,1)],{type:'application/json'}), `${name}.skixo-group.json`);
+});
+$('importGroup').addEventListener('click', ()=>$('importFile').click());
+$('importFile').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const d=JSON.parse(await f.text()); if(d.kind!=='skixo-visualiser-group') throw 0;
+    const gid=uid(); LIB.groups.push({id:gid, name:d.group.name+(LIB.groups.some(g=>g.name===d.group.name)?' (imported)':''), shared:d.group.shared});
+    let first=null; for(const r of d.releases){ const nr={id:uid(), groupId:gid, name:r.name, own:r.own}; LIB.releases.push(nr); first=first||nr; }
+    if(!first) first=newRelease(gid,'Untitled');
+    await openRelease(first.id); setStatus(`Loaded "${d.group.name}". Tracks aren't saved in the file, so drop them in again.`);
+  }catch(err){ setStatus('That file is not a skixO group file.', true); }
+  e.target.value='';
+});
 
 /* ---------------- boot ---------------- */
 syncUI(); bindUI(); setAspect(); markLook();
