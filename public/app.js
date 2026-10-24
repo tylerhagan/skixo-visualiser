@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
-  bgDrift:0.5, glitch:0, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, glitch:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', capPos:'bottom', capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[
@@ -23,8 +23,9 @@ const SLIDERS = {
     ['sway','Sway',0,1,0.01],['rings','Kick rings',0,1,0.01],['misprint','Misprint',0,1,0.01],['spectrum','Spectrum ticks',0,1,0.01],
     ['fadeIn','Fade in (s)',0,10,0.1],['fadeOut','Fade out (s)',0,10,0.1]],
   'g-typeS':[['textScale','Text size',0.5,2.5,0.05]],
+  'g-caps':[['capSize','Caption size',0.5,2.5,0.05]],
   'g-glitch':[
-    ['glitch','Glitch amount',0,1,0.01],['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],
+    ['glitch','Glitch amount',0,1,0.01],['glitchQuiet','In quiet parts',0,2,0.05],['glitchLift','In lifted parts',0,2,0.05],['glitchPeak','At peaks',0,2,0.05],['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],
     ['glitchBlocks','Block shifts',0,1,0.01],['glitchRoll','VHS roll',0,1,0.01]],
   'g-atmos':[
     ['dashes','Glitch dashes',0,1,0.01],['dashSpeed','Dash speed',0,1,0.01],['clouds','Clouds',0,1,0.01],
@@ -49,7 +50,7 @@ buildSliders();
 const fmtVal = v => (Math.abs(v)>=10? v.toFixed(0) : (+v).toFixed(2).replace(/0$/,''));
 function syncUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom']) $(k).value = S[k];
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos']) $(k).value = S[k];
   $('useWordmark').checked = S.useWordmark; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
@@ -57,7 +58,7 @@ function bindUI(){
   for(const list of Object.values(SLIDERS)) for(const [k] of list){
     $(k).addEventListener('input', e=>{ S[k] = +e.target.value; $(k+'-o').textContent = fmtVal(S[k]); onChange(k); });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
   for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
@@ -661,6 +662,7 @@ function frame(ctx, W, H, t){
   }
 
   drawText(ctx,W,H,U,tall,t);
+  if(!RENDER_STILL) drawCaption(ctx,W,H,U,t);
   if(S.glitch>0) glitchFX(ctx,W,H,U,t);
 
   // texture
@@ -687,7 +689,7 @@ function glitchLevel(t){
   if(!A) return 0;
   const hat=hitEnv(A.hats,t,0.07), kick=hitEnv(A.kicks,t,0.1,0.6);
   let g = Math.max(hat*0.7, kick);
-  const ps = poseState(t); g *= ps.to===2 ? 1.6 : ps.to===1 ? 1 : 0.45;
+  const ps = poseState(t); g *= ps.to===2 ? S.glitchPeak : ps.to===1 ? S.glitchLift : S.glitchQuiet;
   for(const c of CUES){ const a=t-c.t; if(a>=0 && a<0.45) g=Math.max(g, 1.4*(1-a/0.45)); }   // burst at section changes
   return Math.min(1.6, g*S.glitch);
 }
@@ -782,6 +784,30 @@ function drawSpectrum(ctx,cx,cy,r,U,t){
   ctx.globalAlpha=1;
 }
 let RENDER_STILL = false;
+/* Captions: lines of "m:ss text" in the release; each shows until the next cue. A time with no text clears. */
+let CAPS = [], capsSrc = null;
+function parseCaptions(){
+  if(capsSrc===S.captions) return CAPS; capsSrc=S.captions; CAPS=[];
+  for(const line of (S.captions||'').split('\n')){
+    const m=line.match(/^\s*(\d+):(\d{1,2}(?:\.\d+)?)\s*(.*)$/); if(!m) continue;
+    CAPS.push({t:(+m[1])*60+(+m[2]), text:m[3].trim()});
+  }
+  CAPS.sort((a,b)=>a.t-b.t); return CAPS;
+}
+function drawCaption(ctx,W,H,U,t){
+  const caps=parseCaptions(); if(!caps.length) return;
+  let i=-1; for(let k=0;k<caps.length;k++){ if(caps[k].t<=t) i=k; else break; }
+  if(i<0 || !caps[i].text) return;
+  const end = i+1<caps.length ? caps[i+1].t : (A?A.dur:caps[i].t+6);
+  const a = Math.min(1, (t-caps[i].t)/0.25, (end-t)/0.25); if(a<=0) return;
+  const lc = s => S.lowercase ? s.toLowerCase().replace(/skixo/g,'skixO') : s;
+  const txt = lc(caps[i].text), size = U*0.052*(S.capSize||1);
+  const y = S.capPos==='top' ? H*0.1 : S.capPos==='centre' ? H*0.5 : H*(H>W?0.88:0.79);
+  ctx.save(); ctx.globalAlpha=a; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
+  let fs=size; ctx.font=`500 ${fs}px ${FONT()}`; while(fs>U*0.02 && ctx.measureText(txt).width>W*0.86){ fs*=0.92; ctx.font=`500 ${fs}px ${FONT()}`; }
+  ctx.strokeStyle=S.paperCol; ctx.lineWidth=fs*0.22; ctx.strokeText(txt,W/2,y); ctx.fillStyle=S.ink; ctx.fillText(txt,W/2,y);
+  ctx.restore();
+}
 /* Fonts: a curated Google set loads on demand; "Installed font" uses any font on this computer by name. */
 const GFONTS = ['Libre Franklin','Archivo Black','Bebas Neue','Anton','Syne','Unbounded','Space Grotesk','DM Serif Display','Fraunces','Instrument Serif','Space Mono','Rubik Mono One'];
 const FONT = ()=> { const f = S.font==='custom' ? (S.fontCustom||'Arial') : S.font; return `"${f}", "Libre Franklin", "Helvetica Neue", Arial, sans-serif`; };
@@ -953,6 +979,7 @@ app.addEventListener('dragover', e=>{ e.preventDefault(); app.classList.add('dro
 app.addEventListener('dragleave', e=>{ if(e.target===app) app.classList.remove('drop'); });
 app.addEventListener('drop', e=>{ e.preventDefault(); app.classList.remove('drop'); for(const f of e.dataTransfer.files) takeFile(f); });
 
+$('capNow').addEventListener('click', ()=>{ const ta=$('captions'); const stamp=fmtTime(now(),true)+' '; const pos=ta.selectionStart; const v=ta.value; const nl=(pos>0 && v[pos-1]!=='\n')?'\n':''; ta.value=v.slice(0,pos)+nl+stamp+v.slice(pos); ta.focus(); ta.selectionStart=ta.selectionEnd=pos+nl.length+stamp.length; S.captions=ta.value; onChange('captions'); });
 $('fillCues').addEventListener('click', ()=>{ S.manualCues = cuesToText(autoCues()); $('manualCues').value=S.manualCues; onChange('manualCues'); });
 $('paperAuto').addEventListener('click', ()=>{ const src = IMGS.a && IMGS.a._src; if(src){ S.paperCol = sampleCorner(src); $('paperCol').value=S.paperCol; onChange('paperCol'); } });
 $('copySettings').addEventListener('click', async ()=>{
@@ -1099,7 +1126,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','bgSec','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','bgDrift','bgOpacity','bgBlur','bgId','bgSec','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
@@ -1146,7 +1173,7 @@ async function loadLibrary(){
 
 /* ---------------- tabs ---------------- */
 (function(){
-  const rail=$('rail'), order=['Release','Settings','Track & artwork','Look','Scene','Type','Atmosphere','Poses','Nod','Motion','Glitch','Export'];
+  const rail=$('rail'), order=['Release','Settings','Track & artwork','Captions','Look','Scene','Type','Atmosphere','Poses','Nod','Motion','Glitch','Export'];
   const secs=[...rail.querySelectorAll('details[data-tab]')];
   order.forEach(n=>{ const d=secs.find(x=>x.querySelector('summary').textContent===n); if(d) rail.appendChild(d); });
   const show=name=>{ secs.forEach(d=>d.hidden = d.dataset.tab!==name); rail.querySelectorAll('[data-go]').forEach(b=>b.setAttribute('aria-selected', b.dataset.go===name)); rail.scrollTop=0; try{ localStorage.setItem('skixo-vis-tab',name); }catch(e){} };

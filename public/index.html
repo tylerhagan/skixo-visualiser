@@ -61,6 +61,17 @@
       </div>
     </details>
 
+    <details open data-tab="track">
+      <summary>Captions</summary>
+      <div class="grp">
+        <textarea id="captions" spellcheck="false" aria-label="Captions" placeholder="0:42 first lyric line&#10;0:47 next line&#10;0:52"></textarea>
+        <p class="hint">One line per cue: time, then the words. A time on its own clears the screen. Play the track and press "Stamp time" to drop in the current time.</p>
+        <div class="btns"><button id="capNow">Stamp time</button></div>
+        <div class="row wide"><label for="capPos">Position</label><select id="capPos"><option value="bottom">Bottom</option><option value="centre">Centre</option><option value="top">Top</option></select></div>
+        <div id="g-caps" class="grp" style="padding:0"></div>
+      </div>
+    </details>
+
     <details open data-tab="motion">
       <summary>Poses</summary>
       <div class="grp" id="g-poses">
