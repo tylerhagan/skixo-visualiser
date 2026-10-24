@@ -251,7 +251,10 @@ function buildNod(slot){
 async function loadWordmark(){
   try{
     if(!wordmarkSrc) wordmarkSrc = await (await fetch('assets/wordmark.svg')).text();
-    const svg = wordmarkSrc.replace(/fill="#[0-9a-fA-F]{3,6}"/, `fill="${S.ink}"`);
+    let svg = wordmarkSrc.replace(/fill="#[0-9a-fA-F]{3,6}"/, `fill="${S.ink}"`);
+    // give the SVG an explicit size from its viewBox so every browser rasterises the whole mark
+    const vb = (svg.match(/viewBox="([^"]+)"/)||[])[1];
+    if(vb){ const [,,vw,vh] = vb.trim().split(/[\s,]+/).map(Number); svg = svg.replace(/<svg\b(?![^>]*\bwidth=)/, `<svg width="${Math.round(vw*4)}" height="${Math.round(vh*4)}"`); }
     const img = new Image(); img.src = URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
     await img.decode(); wordmarkImg = img; requestDraw();
   }catch(e){ wordmarkImg = null; }
@@ -726,7 +729,8 @@ function drawText(ctx,W,H,U,tall,t){
   const artY = topLeft ? y + as*1.7 : y;
   // soft paper backing so dashes, clouds or a busy scene never cut through the type
   ctx.font = `500 ${ts}px "Libre Franklin", "Helvetica Neue", Arial, sans-serif`; ctx.letterSpacing = `${ts*-0.01}px`;
-  const bw = Math.max(ctx.measureText(title).width, (S.artist||'').length*as*0.72) + U*0.06;
+  const artW = (S.useWordmark && wordmarkImg) ? as*1.25*wordmarkImg.naturalWidth/wordmarkImg.naturalHeight : (S.artist||'').length*as*0.72;
+  const bw = Math.max(ctx.measureText(title).width, artW) + U*0.06;
   const top = titleY - ts*1.05, bottom = artY + as*(credit?1.9:0.75);
   const bx = align==='center' ? x-bw/2 : x-U*0.03;
   ctx.save(); ctx.fillStyle=S.paperCol; ctx.shadowColor=S.paperCol; ctx.shadowBlur=U*0.035;
