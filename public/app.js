@@ -3,7 +3,7 @@
 const DEFAULTS = {
   layout:'badge', aspect:'16:9',
   poseMode:'auto', poseLow:0.40, poseHigh:0.93, poseHold:8, poseFade:3, eyeFade:0, blinks:0, snapKick:true, nod:0.4, nodEvery:'2', nodGate:0.3, bpm:'', manualCues:'',
-  badgeSize:0.80, breathe:0.5, kick:0.45, sway:0.3,
+  badgeSize:0.80, portraitY:0, breathe:0.5, kick:0.45, sway:0.3,
   rings:0.45, misprint:0.3, spectrum:0.4,
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
@@ -19,7 +19,7 @@ const SLIDERS = {
   'g-nod':[
     ['nod','Nod depth',0,1,0.01],['nodGate','Nod from energy',0,1,0.01]],
   'g-motion':[
-    ['badgeSize','Portrait size',0.4,1.0,0.01],['breathe','Breathing',0,1,0.01],['kick','Kick pulse',0,1,0.01],
+    ['badgeSize','Portrait size',0.4,1.0,0.01],['portraitY','Vertical position',-0.3,0.3,0.01],['breathe','Breathing',0,1,0.01],['kick','Kick pulse',0,1,0.01],
     ['sway','Sway',0,1,0.01],['rings','Kick rings',0,1,0.01],['misprint','Misprint',0,1,0.01],['spectrum','Spectrum ticks',0,1,0.01],
     ['fadeIn','Fade in (s)',0,10,0.1],['fadeOut','Fade out (s)',0,10,0.1]],
   'g-atmos':[
@@ -449,6 +449,7 @@ function frame(ctx, W, H, t){
   }
   else if(tall){ size = W*Math.min(1.05, S.badgeSize*1.12); cx=W/2; cy=H*0.41; }
   else { size = H*S.badgeSize; cx=W/2; cy=H*0.5; }
+  cy += (S.portraitY||0)*H;   // positive moves down
   const breathe = 1 + Math.sin(t*2*Math.PI/7.5)*0.008*S.breathe;
   const scale = breathe * (1 + k*0.022);
   const rot = (Math.sin(t*2*Math.PI/13)*0.6 + Math.sin(t*2*Math.PI/5.3)*0.15) * S.sway * Math.PI/180;
