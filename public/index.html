@@ -33,7 +33,7 @@
       <summary>Track &amp; artwork</summary>
       <div class="grp">
         <p class="hint">Drop an audio file or image anywhere on the page, or pick one here. Files stay in this browser and are remembered next time. Peak face is optional: the widest smile (or a rare peek) for the biggest lift. Without it, side light carries the peak.</p>
-        <p class="hint">Track: <span id="trackName" style="color:var(--fg)">none yet</span></p>
+        <span id="trackName" hidden></span>
         <div class="files">
           <div class="file"><label for="f-audio">Track</label><input type="file" id="f-audio" accept="audio/*"></div>
           <div class="file"><label for="f-a">Flat light</label><input type="file" id="f-a" accept="image/*"></div>
@@ -121,7 +121,7 @@
         <div class="row wide"><label for="range">Range</label><select id="range"><option value="full">Whole track</option><option value="test">15 s from playhead</option></select></div>
         <div class="btns"><button class="primary" id="export" disabled>Render MP4</button><button id="cancel" hidden>Cancel</button><button id="saveAgain" hidden>Save again</button></div>
         <div class="progress" aria-hidden="true"><div id="bar"></div></div>
-        <p class="hint" id="exportNote">Renders frame by frame, so it's exact even on a slow machine. Needs Chrome or Edge. The whole track at 1080p takes a few minutes.</p>
+        <p class="hint" id="exportNote">Renders frame by frame, so it's exact even on a slow machine. Best in Chrome or Edge; Firefox may export with Opus audio instead of AAC. The whole track at 1080p takes a few minutes.</p>
       </div>
     </details>
 

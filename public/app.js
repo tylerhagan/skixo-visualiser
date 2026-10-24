@@ -15,7 +15,7 @@ const SLIDERS = {
     ['poseLow','Side light at',0,1,0.01],['poseHigh','Peak at',0,1,0.01],
     ['poseHold','Hold (s)',1,30,0.5]],
   'g-posefx':[
-    ['poseFade','Light change (s)',0.2,8,0.1],['eyeFade','Eye blend (s)',0,0.5,0.01],['blinks','Blinks',0,1,0.01]],
+    ['poseFade','Light change (s)',0.2,8,0.1]],
   'g-nod':[
     ['nod','Nod depth',0,1,0.01],['nodGate','Nod from energy',0,1,0.01]],
   'g-motion':[
@@ -76,6 +76,17 @@ function onChange(k){
 const IMGS = { a:null, b:null, c:null, h:null, w:null, n1c:null, n2c:null, n1f:null, n2f:null, n1p:null, n2p:null };
 const NOD_SLOTS = ['n1c','n2c','n1f','n2f','n1p','n2p'], RAW = {};   // masked canvases for poses, raw bitmap for wide scene
 let wordmarkSrc = null, wordmarkImg = null;
+/* file slots: hide the native input, show a button and what's loaded */
+function setNote(slot, text){ const el=document.getElementById('note-'+slot); if(el){ el.textContent=text; el.classList.toggle('mine', text!=='Starter' && text!=='Empty'); } }
+document.querySelectorAll('.file input[type=file]').forEach(inp=>{
+  const slot = inp.id.slice(2); inp.classList.add('vh');
+  const wrap = document.createElement('div'); wrap.className='pick';
+  const btn = document.createElement('button'); btn.type='button'; btn.textContent='Choose'; btn.setAttribute('aria-label', 'Choose file for '+inp.previousElementSibling.textContent);
+  btn.addEventListener('click', ()=>inp.click());
+  const note = document.createElement('span'); note.id='note-'+slot; note.className='note'; note.textContent = slot==='audio' ? 'None yet' : 'Empty';
+  wrap.append(btn, note); inp.after(wrap);
+});
+
 function maskPose(bmp){
   const n = Math.max(bmp.width, bmp.height);
   const c = document.createElement('canvas'); c.width = c.height = n;
@@ -91,8 +102,9 @@ async function loadImage(src){
   const blob = src instanceof Blob ? src : await (await fetch(src)).blob();
   return await createImageBitmap(blob);
 }
-async function setPose(slot, src){
+async function setPose(slot, src, name){
   const bmp = await loadImage(src);
+  setNote(slot, name || (typeof src==='string' ? 'Starter' : (src.name || 'Your file')));
   if(slot==='w') IMGS.w = bmp;
   else if(NOD_SLOTS.includes(slot)){ RAW[slot] = bmp; buildNod(slot); }
   else { IMGS[slot] = maskPose(bmp); if(slot==='a'||slot==='b'||slot==='c') NOD_SLOTS.forEach(buildNod); if(slot==='c'||slot==='h') rebuildCues(); }
@@ -636,6 +648,7 @@ function drawTimeline(){
   if(!w) return;
   tl.width = w*dpr; tl.height = h*dpr;
   const c = document.createElement('canvas'); c.width=tl.width; c.height=tl.height; const x=c.getContext('2d'); x.scale(dpr,dpr);
+  if(!A){ x.fillStyle='#8e938f'; x.font='12px "Libre Franklin", sans-serif'; x.textBaseline='middle'; x.fillText('Drop a track anywhere on the page to see its sections and kicks here', 14, h/2); }
   if(A){
     const dur=A.dur;
     for(let i=0;i<CUES.length;i++){ const a=CUES[i].t/dur*w, b=(i+1<CUES.length?CUES[i+1].t:dur)/dur*w; x.fillStyle=POSE_COLS[CUES[i].p]; x.globalAlpha=0.9; x.fillRect(a,h-6,b-a,6); }
@@ -663,7 +676,7 @@ new ResizeObserver(()=>drawTimeline()).observe(tl);
 /* ---------------- files in ---------------- */
 async function takeFile(file, slot){
   try{
-    if(file.type.startsWith('audio') || /\.(wav|mp3|flac|ogg|m4a|aiff?)$/i.test(file.name)){ await loadAudio(file); store.put('audio', file, file.name); $('trackName').textContent = file.name; return; }
+    if(file.type.startsWith('audio') || /\.(wav|mp3|flac|ogg|m4a|aiff?)$/i.test(file.name)){ await loadAudio(file); store.put('audio', file, file.name); $('trackName').textContent = file.name; setNote('audio', file.name); return; }
     if(file.type.startsWith('image')){
       const nm = file.name.match(/nod[-_ ]?(side|flat|peak)[-_ ]?([12])/i);
       const s = slot || (nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
@@ -807,12 +820,12 @@ syncUI(); bindUI(); setAspect();
       n1p:'assets/nod-peak-1.jpg', n2p:'assets/nod-peak-2.jpg' };
     await Promise.all(['a','b','c','h','w','n1c','n2c','n1f','n2f','n1p','n2p'].map(async k=>{
       const saved = await store.get('img-'+k);
-      if(saved && saved.blob) return setPose(k, saved.blob);
+      if(saved && saved.blob) return setPose(k, saved.blob, saved.name);
       if(starter[k]) return setPose(k, starter[k]);
     }).concat([document.fonts.load('500 20px "Libre Franklin"').catch(()=>{}), loadWordmark()]));
     makeClouds(S.blue); requestDraw();
     const track = await store.get('audio');
-    if(track && track.blob){ $('trackName').textContent = track.name; await loadAudio(track.blob); }
+    if(track && track.blob){ $('trackName').textContent = track.name; setNote('audio', track.name); await loadAudio(track.blob); }
     else setStatus('Drop a track anywhere to start');
   }catch(e){ setStatus('Could not load the starter files. Drop in a track and artwork to begin.', true); }
 })();

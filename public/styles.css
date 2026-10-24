@@ -66,3 +66,8 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-s
   .rail{overflow:visible}
 }
 @media (prefers-reduced-motion:reduce){.progress div{transition:none}}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pick{display:flex;align-items:center;gap:10px;min-width:0}
+.pick button{padding:4px 10px;font-size:12px;flex:none}
+.note{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.note.mine{color:var(--fg)}
