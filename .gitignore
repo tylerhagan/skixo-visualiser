@@ -1,0 +1,5 @@
+node_modules/
+.vercel/
+*.mp4
+*.wav
+.DS_Store

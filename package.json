@@ -1,0 +1,13 @@
+{
+  "name": "skixo-visualiser",
+  "private": true,
+  "type": "module",
+  "version": "0.2.0",
+  "description": "Audio-reactive music video visualiser for skixO releases",
+  "scripts": {
+    "dev": "npx --yes serve public"
+  },
+  "dependencies": {
+    "@vercel/functions": "3.9.11"
+  }
+}

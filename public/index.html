@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>skixO Service Visualiser</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app" id="app">
+  <section class="stagecol">
+    <div class="brand">
+      <h1>the skixO service <span>/ visualiser studio</span></h1>
+      <div class="status" id="status">Loading track…</div>
+    </div>
+    <div class="stagewrap" id="stagewrap"><canvas id="stage" width="1280" height="720" aria-label="Visualiser preview"></canvas></div>
+    <div class="transport">
+      <button id="play" aria-label="Play" disabled><svg viewBox="0 0 16 16" id="playicon"><path d="M3 1.5v13l11-6.5z"/></svg></button>
+      <div class="timeline-wrap">
+        <canvas id="timeline" aria-label="Timeline: click to seek"></canvas>
+        <div class="legend"><span><i style="background:#cfc6b2"></i>Eyes closed</span><span><i style="background:#8e9aa0"></i>Closed, side light</span><span><i style="background:#3d6884"></i>Eyes open</span><span style="margin-left:auto" id="kickcount"></span></div>
+      </div>
+      <div class="time" id="time">0:00 / 0:00</div>
+    </div>
+  </section>
+
+  <aside class="rail" id="rail">
+    <details open>
+      <summary>Track &amp; artwork</summary>
+      <div class="grp">
+        <p class="hint">Drop an audio file or image anywhere on the page, or pick one here. Files stay in this browser and are remembered next time. A half-open frame is optional; if you add one, blinks and eye changes pass through it.</p>
+        <p class="hint">Track: <span id="trackName" style="color:var(--fg)">none yet</span></p>
+        <div class="files">
+          <div class="file"><label for="f-audio">Track</label><input type="file" id="f-audio" accept="audio/*"></div>
+          <div class="file"><label for="f-a">Eyes closed</label><input type="file" id="f-a" accept="image/*"></div>
+          <div class="file"><label for="f-b">Side light</label><input type="file" id="f-b" accept="image/*"></div>
+          <div class="file"><label for="f-c">Eyes open</label><input type="file" id="f-c" accept="image/*"></div>
+          <div class="file"><label for="f-h">Half-open</label><input type="file" id="f-h" accept="image/*"></div>
+          <div class="file"><label for="f-w">Wide scene</label><input type="file" id="f-w" accept="image/*"></div>
+        </div>
+        <div class="row wide"><label for="layout">Layout</label><select id="layout"><option value="badge">Badge on paper</option><option value="wallpaper">Wide scene</option></select></div>
+        <div class="row wide"><label for="aspect">Frame</label><select id="aspect"><option value="16:9">16:9 · YouTube</option><option value="9:16">9:16 · Shorts / Reels</option></select></div>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Poses</summary>
+      <div class="grp" id="g-poses">
+        <div class="row wide"><label for="poseMode">Changes</label><select id="poseMode"><option value="auto">Follow the track's energy</option><option value="manual">My own cue list</option></select></div>
+        <div id="autoPose" class="grp" style="padding:0"></div>
+        <div id="manualPose" hidden>
+          <textarea id="manualCues" spellcheck="false" aria-label="Cue list"></textarea>
+          <p class="hint">One cue per line: time then pose. Poses are <b>closed</b>, <b>light</b> or <b>open</b>. Example: <code>1:04 open</code></p>
+          <div class="btns" style="margin-top:8px"><button id="fillCues">Fill from track energy</button></div>
+        </div>
+        <div id="g-posefx" class="grp" style="padding:0"></div>
+        <div class="row wide"><label for="snapKick">Eyes on a kick</label><input type="checkbox" id="snapKick"></div>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Motion</summary>
+      <div class="grp" id="g-motion"></div>
+    </details>
+
+    <details>
+      <summary>Atmosphere</summary>
+      <div class="grp" id="g-atmos"></div>
+    </details>
+
+    <details>
+      <summary>Type</summary>
+      <div class="grp" id="g-type">
+        <div class="row wide"><label for="title">Title</label><input type="text" id="title"></div>
+        <div class="row wide"><label for="artist">Artist</label><input type="text" id="artist"></div>
+        <div class="row wide"><label for="credit">Small line</label><input type="text" id="credit" placeholder="e.g. originally by …"></div>
+        <div class="row wide"><label for="textPos">Position</label><select id="textPos"><option value="bottom-left">Bottom left</option><option value="bottom-centre">Bottom centre</option><option value="top-left">Top left</option><option value="off">Hidden</option></select></div>
+        <div class="row wide"><label for="useWordmark">Wordmark</label><input type="checkbox" id="useWordmark"></div>
+        <div class="row wide"><label for="lowercase">Lowercase title</label><input type="checkbox" id="lowercase"></div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Colour</summary>
+      <div class="grp">
+        <div class="row wide"><label for="ink">Ink</label><input type="color" id="ink"></div>
+        <div class="row wide"><label for="blue">Blue</label><input type="color" id="blue"></div>
+        <div class="row wide"><label for="paperCol">Paper</label><input type="color" id="paperCol"></div>
+        <div class="btns"><button id="paperAuto">Match paper to artwork</button></div>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Export</summary>
+      <div class="grp">
+        <div class="row wide"><label for="res">Size</label><select id="res"><option value="1080">1080p (1920×1080)</option><option value="1440">1440p (2560×1440)</option><option value="720">720p, quick test</option></select></div>
+        <div class="row wide"><label for="fps">Frame rate</label><select id="fps"><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
+        <div class="row wide"><label for="range">Range</label><select id="range"><option value="full">Whole track</option><option value="test">15 s from playhead</option></select></div>
+        <div class="btns"><button class="primary" id="export" disabled>Render MP4</button><button id="cancel" hidden>Cancel</button><button id="saveAgain" hidden>Save again</button></div>
+        <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+        <p class="hint" id="exportNote">Renders frame by frame, so it's exact even on a slow machine. Needs Chrome or Edge. The whole track at 1080p takes a few minutes.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Settings</summary>
+      <div class="grp">
+        <p class="hint">Your settings are remembered in this browser. Copy them to keep a look for another track.</p>
+        <div class="btns"><button id="copySettings">Copy settings</button><button id="resetSettings">Reset to defaults</button></div>
+        <textarea id="pasteSettings" placeholder="Paste copied settings here, then Apply" aria-label="Paste settings" style="min-height:70px"></textarea>
+        <div class="btns"><button id="applySettings">Apply pasted settings</button><button id="forgetFiles">Forget saved files</button></div>
+      </div>
+    </details>
+  </aside>
+</div>
+
+<script src="vendor/mp4-muxer.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
