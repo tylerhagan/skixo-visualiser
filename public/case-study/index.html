@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>skixO Music Video Visualiser · Case study · Tyler Hagan</title>
+<meta name="description" content="A browser-based studio that turns a skixO track and a set of mascot frames into an audio-reactive music video, plus every promo asset around it.">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #111315; --sheet: #181b1e; --raise: #202428; --line: #2b3035; --rule: #3a4046;
+  --fg: #ebe5d8; --fg-2: #c9c4b8; --muted: #8e938f; --accent: #8db2cb;
+  --font: "Libre Franklin", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 400 17px/1.6 var(--font); -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+h1, h2, h3, p, figure, ul { margin: 0; }
+img { display: block; max-width: 100%; height: auto; }
+
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; max-width: 1120px; margin: 0 auto; padding: 18px max(20px, env(safe-area-inset-left, 0px)); font-size: 0.92rem; }
+.top .me { font-weight: 700; text-decoration: none; letter-spacing: -0.01em; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border: 1.5px solid var(--fg); border-radius: 5px; background: var(--fg); color: var(--bg); font-weight: 600; font-size: 0.92rem; text-decoration: none; white-space: nowrap; }
+.btn.ghost { background: none; color: var(--fg); }
+.btn:hover { filter: brightness(1.1); }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 max(20px, env(safe-area-inset-left, 0px)) 96px; }
+.col { max-width: 680px; }
+
+header.intro { padding: 40px 0 28px; border-top: 2px solid var(--fg); }
+.kind { font: 500 0.82rem/1.4 var(--mono); color: var(--muted); }
+h1 { margin-top: 12px; font-size: clamp(2.1rem, 1.4rem + 3.4vw, 3.9rem); font-weight: 700; letter-spacing: -0.035em; line-height: 1.02; max-width: 18ch; text-wrap: balance; }
+.dek { margin-top: 18px; font-size: 1.2rem; line-height: 1.45; color: var(--fg-2); max-width: 46ch; text-wrap: pretty; }
+
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 24px; margin: 30px 0 0; padding: 18px 0 20px; border-top: 1px solid var(--fg); border-bottom: 1px solid var(--fg); font-size: 0.92rem; color: var(--fg-2); }
+.facts dt { font: 500 0.78rem/1.4 var(--mono); color: var(--muted); }
+.facts dd { margin: 4px 0 0; line-height: 1.45; }
+
+figure { margin-top: 32px; }
+figure img { border: 1px solid var(--rule); background: var(--sheet); border-radius: 4px; }
+figcaption { margin-top: 10px; font-size: 0.88rem; color: var(--muted); line-height: 1.5; max-width: 70ch; }
+figure.hero { margin-top: 36px; }
+
+section { margin-top: 64px; }
+section h2 { font-size: clamp(1.45rem, 1.15rem + 1.1vw, 2rem); font-weight: 700; letter-spacing: -0.025em; line-height: 1.12; padding-top: 14px; border-top: 1px solid var(--rule); }
+section h2 .n { font: 500 0.95rem/1 var(--mono); color: var(--accent); margin-right: 12px; vertical-align: 0.3em; }
+section p { margin-top: 14px; }
+section p.lead { font-size: 1.12rem; }
+
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 32px; }
+.pair figure { margin-top: 0; }
+.formats { display: grid; grid-template-columns: minmax(0, 720fr) minmax(0, 864fr); gap: 16px; max-width: 760px; margin-top: 32px; align-items: start; }
+.formats figure { margin-top: 0; }
+.square { max-width: 680px; }
+
+ul.list { list-style: none; padding: 0; margin-top: 16px; }
+ul.list li { padding: 12px 0 12px 22px; border-top: 1px solid var(--line); position: relative; }
+ul.list li::before { content: ""; position: absolute; left: 2px; top: 22px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+footer { margin-top: 72px; padding-top: 18px; border-top: 2px solid var(--fg); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: 0.88rem; color: var(--muted); }
+footer b { color: var(--fg); }
+
+@media (max-width: 760px) {
+  body { font-size: 16px; }
+  .top { padding-left: 16px; padding-right: 16px; }
+  .wrap { padding-left: 16px; padding-right: 16px; }
+  .facts { grid-template-columns: 1fr; gap: 10px; }
+  .pair { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav class="top" aria-label="Site">
+  <a class="me" href="https://tylerhagan.co.uk">Tyler Hagan</a>
+  <a class="btn ghost" href="https://www.skixo.uk">skixO</a>
+</nav>
+
+<main class="wrap">
+  <header class="intro">
+    <p class="kind">Case study · Self-initiated tool, 2026</p>
+    <h1>skixO · Music Video Visualiser</h1>
+    <p class="dek">A browser-based studio that turns a skixO track and a set of mascot frames into an audio-reactive music video, plus every promo asset around it.</p>
+
+    <dl class="facts">
+      <div><dt>Role</dt><dd>Concept, art direction, design and build</dd></div>
+      <div><dt>Platform</dt><dd>Web (desktop, Chrome or Edge for rendering)</dd></div>
+      <div><dt>Status</dt><dd>In use for skixO releases (private tool)</dd></div>
+    </dl>
+
+    <figure class="hero">
+      <img src="/case-study/img/editor.jpg" width="1600" height="1200" alt="The visualiser editor: a preview of the mascot badge over a dusk city skyline, a panel of looks, layout and scene controls on the right, and a full-width timeline below with Scene, Mood, Captions and Audio lanes.">
+      <figcaption>The editor on a release. Preview, the panel for the step you are on, and the timeline lanes underneath.</figcaption>
+    </figure>
+  </header>
+
+  <section class="col">
+    <h2>The brief</h2>
+    <p class="lead">Every skixO release needs a video, a vertical cut, a Spotify Canvas and a handful of stills, and each of those used to mean starting from scratch.</p>
+    <p>I wanted the opposite: a visual identity strong enough to repeat, and a tool that could apply it to any new track in minutes. The visualiser listens to the track, works out its structure, and animates a calm, closed-eyed mascot against shifting backgrounds, in the spirit of a classic static-artwork visualiser rather than a full music video.</p>
+  </section>
+
+  <section>
+    <div class="col">
+      <h2><span class="n">01</span>Reading the track</h2>
+      <p>The audio is analysed in the browser: low and high bands for kicks and hats, a smoothed energy curve for structure, and a tempo and downbeat estimate from the kicks. From that, every track splits into quiet, lifted and peak sections, and the two biggest moments get the peak treatment. Because the scale is relative to each track, a gentle song and a loud one both get the full range of looks.</p>
+    </div>
+    <div class="pair">
+      <figure><img src="/case-study/img/frame-quiet.jpg" width="1600" height="900" loading="lazy" alt="A quiet section: the mascot in flat light inside a round badge, over a starry night sky with a crescent moon and low clouds."><figcaption>Quiet: flat light.</figcaption></figure>
+      <figure><img src="/case-study/img/frame-lifted.jpg" width="1600" height="900" loading="lazy" alt="A lifted section of the same track: the same night scene, with a faint ring of beat ticks around the badge."><figcaption>Lifted: the same scene, with the beat starting to show around the badge.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="col">
+      <h2><span class="n">02</span>A character that stays in character</h2>
+      <p>The mascot's identity is a closed-eye smile, so the animation is restrained: light shifts from flat to side light as the track lifts, the smile widens slightly at the peaks, and the head nods on the beat. Eye-open frames were tried and dropped because they broke the character.</p>
+      <p>The frames were produced with image generation under tight consistency rules (same canvas, same body, only the head changes), then aligned automatically so the body never jitters. Changes are clean cuts timed to a kick, like drawn animation, rather than crossfades that would ghost two drawings together.</p>
+    </div>
+    <figure class="square"><img src="/case-study/img/pose-and-nod-frames.jpg" width="1200" height="1200" loading="lazy" alt="A three by three grid of mascot frames. Rows show flat light, side light and the peak pose; columns show the head upright and at two points in the nod."><figcaption>Flat, side light and peak, each with its nods. Only the head changes from frame to frame.</figcaption></figure>
+  </section>
+
+  <section>
+    <div class="col">
+      <h2><span class="n">03</span>Backgrounds that carry the story</h2>
+      <p>The mascot stays calm while the world behind it changes. Each section can have its own scene, with its own opacity, blur and drift, and scene changes follow the same timing as the mascot.</p>
+      <p>A library of 67 backgrounds in three sets (wistful, surreal, glitch) and four palettes sits behind a picker, and a "match look" step samples a background to recolour the badge so it always belongs to the scene.</p>
+    </div>
+    <figure><img src="/case-study/img/frame-peak.jpg" width="1600" height="900" loading="lazy" alt="A peak section: the mascot in side light with a wider smile, over a glitched sky with light rays, red and cyan channel splits and scan lines."><figcaption>A peak. The scene and the glitch change with the section, and the mascot stays calm.</figcaption></figure>
+  </section>
+
+  <section>
+    <div class="col">
+      <h2><span class="n">04</span>Consistency across a body of work</h2>
+      <p>Looks bundle paper, ink and accent colours and recolour the artwork to match. Release groups (an album, a series, a playlist) share a look and motion, while each release keeps its own track, titles, sections and captions. Groups export to a file for backup.</p>
+    </div>
+    <figure><img src="/case-study/img/looks.jpg" width="1500" height="560" loading="lazy" alt="The same frame in five looks: paper blue, dusk in purple, sage in green, riso red, and night on a dark background."><figcaption>The five looks: Paper blue, Dusk, Sage, Riso red and Night.</figcaption></figure>
+  </section>
+
+  <section>
+    <div class="col">
+      <h2><span class="n">05</span>One render, a full set of assets</h2>
+      <p>Rendering is frame-accurate and runs entirely in the browser: 16:9 and 9:16 in one pass, an 8-second seamless Spotify Canvas loop, and still presets for YouTube thumbnails, Instagram posts and Story covers with a headline type style. Lyrics are timed by tapping along as the track plays, then styled with entrances, finishes and fade timings.</p>
+    </div>
+    <div class="formats">
+      <figure><img src="/case-study/img/frame-vertical.jpg" width="720" height="1280" loading="lazy" alt="The vertical cut: the badge over a dusk skyline, with the title and a two-line lyric caption below it."><figcaption>The 9:16 cut, rendered in the same pass as 16:9.</figcaption></figure>
+      <figure><img src="/case-study/img/still-instagram.jpg" width="864" height="1080" loading="lazy" alt="An Instagram post still: the badge with a light glitch over the dusk skyline and the headline OUT NOW in large outlined type."><figcaption>An Instagram post with the headline type style.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="col">
+    <h2><span class="n">06</span>Designing the tool itself</h2>
+    <p>The interface went through a research-led pass against established video editors. That brought a top bar with the essentials, a full-width timeline with Scene, Mood, Captions and Audio lanes (click a block to edit it), and a panel reorganised around the order you actually work through a release: release details, audio and sections, look, motion, export.</p>
+  </section>
+
+  <section class="col">
+    <h2>Highlights</h2>
+    <ul class="list">
+      <li>Audio analysis, sectioning, tempo detection and rendering all run in the browser; nothing is uploaded</li>
+      <li>Stateless rendering: every frame is a pure function of time, so preview and export always match</li>
+      <li>Section-aware scenes, motion and glitch, blended with the same timing as the character</li>
+      <li>Release groups and looks for visual consistency across releases</li>
+      <li>16:9, 9:16, Spotify Canvas and still exports from one setup</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span><b>Tyler Hagan</b>, product designer, Berlin · <a href="https://tylerhagan.co.uk">tylerhagan.co.uk</a> · <a href="mailto:tylerhagan@gmail.com">tylerhagan@gmail.com</a></span>
+    <span>Music and artwork: <a href="https://www.skixo.uk">skixO</a></span>
+  </footer>
+</main>
+</body>
+</html>

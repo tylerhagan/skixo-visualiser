@@ -1,9 +1,9 @@
 import { next } from '@vercel/functions';
 
-// Password gate for the whole site (page, artwork, everything).
+// Password gate for the whole site (page, artwork, everything) except the public case study.
 // Set SITE_PASSWORD (and optionally SITE_USER) in Vercel: Project → Settings → Environment Variables.
 // Until SITE_PASSWORD is set, the site stays locked.
-export const config = { matcher: '/:path*' };
+export const config = { matcher: '/((?!case-study(?:/|$)).*)' };
 
 function same(a, b) {
   if (a.length !== b.length) return false;
