@@ -2,7 +2,7 @@
 /* ---------------- settings ---------------- */
 const DEFAULTS = {
   layout:'badge', aspect:'16:9',
-  poseMode:'auto', poseLow:0.40, poseHigh:0.93, poseHold:8, poseFade:3, eyeFade:0, blinks:0, snapKick:true, nod:0.4, nodEvery:'2', nodGate:0.3, bpm:'', manualCues:'',
+  poseMode:'auto', peakCount:2, poseLow:0.40, poseHigh:0.93, poseHold:8, poseFade:3, eyeFade:0, blinks:0, snapKick:true, nod:0.4, nodEvery:'2', nodGate:0.3, bpm:'', manualCues:'',
   badgeSize:0.80, portraitY:0, breathe:0.5, kick:0.45, sway:0.3,
   rings:0.45, misprint:0.3, spectrum:0.4,
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
@@ -12,7 +12,7 @@ const DEFAULTS = {
 };
 const SLIDERS = {
   'autoPose':[
-    ['poseLow','Side light at',0,1,0.01],['poseHigh','Peak at',0,1,0.01],
+    ['poseLow','Side light at',0,1,0.01],['peakCount','Peak moments',0,4,1],
     ['poseHold','Hold (s)',1,30,0.5]],
   'g-posefx':[
     ['poseFade','Light change (s)',0.2,8,0.1]],
@@ -67,7 +67,7 @@ function onChange(k){
   if(k==='bpm' && A){ A.grid = beatGrid(); showGrid(); }
   if(k==='ink') wordmarkImg = null, loadWordmark();
   if(k==='blue') makeClouds(S.blue);
-  if(['poseMode','poseLow','poseHigh','poseHold','manualCues','poseFade','eyeFade','blinks','snapKick'].includes(k)) rebuildCues();
+  if(['poseMode','poseLow','poseHigh','peakCount','poseHold','manualCues','poseFade','eyeFade','blinks','snapKick'].includes(k)) rebuildCues();
   if(k==='paperCol' || k==='vignette') overlayCache = {};
   persist(); requestDraw();
 }
@@ -281,17 +281,41 @@ function energyAt(t){ if(!A) return 0; const i=Math.max(0,Math.min(A.energy.leng
 
 /* ---------------- poses / cues ---------------- */
 const POSE_NAMES = ['closed','light','open'];
-function autoCues(){
-  if(!A) return [{t:0,p:0}];
+/* Light follows the energy (flat / side). The peak face goes to the N biggest moments of the track:
+   the highest points of the smoothed energy, at least 20 s apart, each widened to the surrounding plateau. */
+function lightCues(){
   const cues=[{t:0,p:0}]; let cur=0, lastT=-1e9; const hy=0.04;
   for(let i=0;i<A.energy.length;i+=5){
-    const e=A.energy[i], t=i*HOP;
-    let want = cur;
-    const up1=S.poseLow+(cur<1?hy:-hy), up2=S.poseHigh+(cur<2?hy:-hy);
-    want = e>=up2 ? 2 : e>=up1 ? 1 : 0;
+    const e=A.energy[i], t=i*HOP, want = e >= S.poseLow+(cur<1?hy:-hy) ? 1 : 0;
     if(want!==cur && t-lastT>=S.poseHold){ cur=want; lastT=t; cues.push({t,p:cur}); }
   }
   return cues;
+}
+function biggestMoments(n){
+  const B=50, bins=[];   // 0.5 s bins
+  for(let i=0;i<A.energy.length;i+=B){ let m=0,c=0; for(let j=i;j<Math.min(i+B,A.energy.length);j++){ m+=A.energy[j]; c++; } bins.push(m/c); }
+  const out=[]; const sep=40;
+  for(let k=0;k<n;k++){
+    let bi=-1, bv=0.5;
+    bins.forEach((v,i)=>{ if(v>bv && out.every(o=>Math.abs(i-o.c)>=sep && (i<o.a-sep/2 || i>o.b+sep/2))){ bv=v; bi=i; } });
+    if(bi<0) break;
+    let a=bi, b=bi; const floor=Math.max(0.5, bv-0.09);
+    while(a>0 && bins[a-1]>=floor && (bi-a)<18) a--;
+    while(b<bins.length-1 && bins[b+1]>=floor && (b-bi)<18) b++;
+    while(b-a<12){ if(a>0) a--; if(b<bins.length-1) b++; if(a===0&&b===bins.length-1) break; }
+    out.push({c:bi,a,b});
+  }
+  return out.map(o=>({t0:o.a*B*HOP, t1:(o.b+1)*B*HOP})).sort((x,y)=>x.t0-y.t0);
+}
+function autoCues(){
+  if(!A) return [{t:0,p:0}];
+  const light = lightCues();
+  const lightAt = t => { let p=0; for(const c of light){ if(c.t<=t) p=c.p; else break; } return p; };
+  const peaks = (+S.peakCount>0) ? biggestMoments(+S.peakCount) : [];
+  let cues = light.filter(c=>!peaks.some(pk=>c.t>=pk.t0 && c.t<pk.t1));
+  for(const pk of peaks){ cues.push({t:pk.t0,p:2}); cues.push({t:pk.t1,p:lightAt(pk.t1)}); }
+  cues.sort((a,b)=>a.t-b.t);
+  return cues.filter((c,i)=> i===0 || c.p!==cues[i-1].p);
 }
 function parseCues(txt){
   const out=[];
