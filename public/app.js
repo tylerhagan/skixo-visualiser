@@ -2,7 +2,7 @@
 /* ---------------- settings ---------------- */
 const DEFAULTS = {
   layout:'badge', aspect:'16:9',
-  poseMode:'auto', poseLow:0.40, poseHigh:0.93, poseHold:8, poseFade:3, eyeFade:0, blinks:0, snapKick:true, nod:0.6, nodEvery:'1', nodGate:0.12, bpm:'', manualCues:'',
+  poseMode:'auto', poseLow:0.40, poseHigh:0.93, poseHold:8, poseFade:3, eyeFade:0, blinks:0, snapKick:true, nod:0.4, nodEvery:'2', nodGate:0.3, bpm:'', manualCues:'',
   badgeSize:0.80, breathe:0.5, kick:0.45, sway:0.3,
   rings:0.45, misprint:0.3, spectrum:0.4,
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
@@ -228,12 +228,13 @@ function nodFrame(t, img){
   if(!f1 && !f2) return null;
   if(energyAt(t) < S.nodGate) return null;
   const P = A.grid.beat * (+S.nodEvery || 1);
-  const ph = (((t - A.grid.phase + 0.05) % P) + P) % P;   // head is lowest right on the beat
-  const shallow = f1 || f2, deep = (S.nod > 0.45 && f2) ? f2 : shallow;
-  const hold = 0.05 + 0.1*S.nod;
-  if(ph < 0.05) return shallow;
-  if(ph < 0.05 + hold) return deep;
-  if(ph < 0.05 + hold + 0.06) return shallow;
+  // shape scales with the nod length: ease down before the beat, lowest on it, linger, ease back up
+  const lead = 0.12*P, hold = (0.14 + 0.16*S.nod)*P, tail = 0.14*P;
+  const ph = (((t - A.grid.phase + lead) % P) + P) % P;
+  const shallow = f1 || f2, deep = (S.nod > 0.65 && f2) ? f2 : shallow;
+  if(ph < lead) return shallow;
+  if(ph < lead + hold) return deep;
+  if(ph < lead + hold + tail) return shallow;
   return null;
 }
 
