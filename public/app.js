@@ -801,7 +801,9 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 syncUI(); bindUI(); setAspect();
 (async ()=>{
   try{
-    const starter = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', w:'assets/wallpaper.jpg' };
+    const starter = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/peak-face.jpg', w:'assets/wallpaper.jpg',
+      n1f:'assets/nod-flat-1.jpg', n2f:'assets/nod-flat-2.jpg', n1c:'assets/nod-side-1.jpg', n2c:'assets/nod-side-2.jpg',
+      n1p:'assets/nod-peak-1.jpg', n2p:'assets/nod-peak-2.jpg' };
     await Promise.all(['a','b','c','h','w','n1c','n2c','n1f','n2f','n1p','n2p'].map(async k=>{
       const saved = await store.get('img-'+k);
       if(saved && saved.blob) return setPose(k, saved.blob);
