@@ -442,7 +442,12 @@ function frame(ctx, W, H, t){
 
   // badge geometry
   let size, cx, cy;
-  if(tall){ size = W*Math.min(1.05, S.badgeSize*1.12); cx=W/2; cy=H*0.41; }
+  if(S.layout==='close'){
+    // close-up: the badge fills the frame and the shoulders run off the bottom edge
+    if(tall){ size = W*1.22*(S.badgeSize/0.8); cx=W/2; cy=H*0.39; }
+    else { size = H*1.16*(S.badgeSize/0.8); cx=W/2; cy=H*0.64; }
+  }
+  else if(tall){ size = W*Math.min(1.05, S.badgeSize*1.12); cx=W/2; cy=H*0.41; }
   else { size = H*S.badgeSize; cx=W/2; cy=H*0.5; }
   const breathe = 1 + Math.sin(t*2*Math.PI/7.5)*0.008*S.breathe;
   const scale = breathe * (1 + k*0.022);
