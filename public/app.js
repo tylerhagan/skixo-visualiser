@@ -392,7 +392,7 @@ function alignOffset(baseImg, img){
 const CLIP = {src:null, name:'', raw:null, proc:null, n:0, cols:0, cell:720}; let CLIP_T=null, CLIP_JOB=0;
 async function loadClip(src, name){
   const job=++CLIP_JOB, blob = src instanceof Blob ? src : await (await fetch(src)).blob();
-  CLIP.src=blob; CLIP.name=name || (typeof src==='string' ? 'Starter' : (src.name||'Your clip'));
+  CLIP.failed=false; CLIP.src=blob; CLIP.name=name || (typeof src==='string' ? 'Starter' : (src.name||'Your clip'));
   const url=URL.createObjectURL(blob), v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto'; v.src=url;
   try{
     await new Promise((res,rej)=>{ v.onloadeddata=res; v.onerror=()=>rej(new Error('video')); });
@@ -407,7 +407,7 @@ async function loadClip(src, name){
     }
     Object.assign(CLIP,{raw:sheet,n,cols}); processClip(); setNote('clip', CLIP.name);
     const tc=document.querySelector('.ftile[data-slot="clip"] canvas'); if(tc){ const tx=tc.getContext('2d'); tx.clearRect(0,0,tc.width,tc.height); tx.drawImage(sheet,0,0,C,C,0,0,tc.width,tc.height); }
-  }catch(e){ setNote('clip','Could not read'); }
+  }catch(e){ CLIP.failed=true; setNote('clip','Could not read'); }
   finally{ URL.revokeObjectURL(url); }
   requestDraw();
 }
@@ -425,7 +425,7 @@ function processClip(){   // same recolour and edge mask as the still frames
 let INTRO_C=null;
 function introStatus(){
   if(S.introAnim===false) return ['off','Off.'];
-  if(!CLIP.proc) return ['wait', CLIP.name==='Could not read' ? 'This clip could not be read. Try an MP4 or WebM.' : 'Loading the clip…'];
+  if(!CLIP.proc) return ['wait', CLIP.failed ? 'The clip could not be loaded. Drop an MP4 or WebM on the Animated intro tile.' : 'Loading the clip…'];
   if(S.subject!=='mascot') return ['off','Not playing: the subject is set to '+(S.subject==='image'?'Logo':'Title')+' (Subject section).'];
   if(S.frameShape==='cutout') return ['off','Not playing: the frame is set to Cut-out, and the clip has the disc built in. Switch the frame to Circle or Rounded.'];
   if(!A) return ['wait','Plays once a track is loaded.'];
