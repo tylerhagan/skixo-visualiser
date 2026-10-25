@@ -226,6 +226,15 @@
           <div><span class="fh">Headphones</span><button type="button" class="ftile" data-slot="phones" aria-label="Headphones on their own: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-phones">Empty</span></button><input type="file" id="f-phones" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>
           <div><span class="fh">Line art</span><button type="button" class="ftile" data-slot="line" aria-label="Line art: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-line">Empty</span></button><input type="file" id="f-line" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>
         </div>
+        <div class="clipbox">
+          <div><span class="fh">Animated intro</span><button type="button" class="ftile" data-slot="clip" aria-label="Animated intro clip: choose or drop a video"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-clip">Empty</span></button><input type="file" id="f-clip" class="vh" accept="video/*" tabindex="-1" aria-hidden="true"></div>
+          <div class="grp" style="padding:0;min-width:0">
+            <div class="row wide"><label for="introAnim">Sway in the intro</label><input type="checkbox" id="introAnim"></div>
+            <div id="g-clip" class="grp" style="padding:0"></div>
+            <div class="row wide"><label for="clipBars">Bars per sway</label><select id="clipBars" data-seg><option value="1">1</option><option value="2">2</option><option value="4">4</option></select></div>
+          </div>
+        </div>
+        <p class="hint">Plays from the start of the track until the first change to side light, swaying back and forth in time, then hands over to the still. Use only the part of a clip where his eyes stay closed.</p>
         <div class="fextra">
           <div><span class="fh">In-between</span><button type="button" class="ftile" data-slot="h" aria-label="In-between frame: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-h">Empty</span></button><input type="file" id="f-h" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>
           <div><span class="fh">Wide scene</span><button type="button" class="ftile wide" data-slot="w" aria-label="Wide scene: choose or drop a file"><canvas width="192" height="108"></canvas><span class="fbadge" id="note-w">Empty</span></button><input type="file" id="f-w" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>

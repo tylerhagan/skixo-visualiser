@@ -8,6 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
+  introAnim:true, clipIn:0, clipOut:1.6, clipBars:'2',
   subject:'mascot', frameShape:'circle', fSticker:0, fShadow:0.35, fOffset:0, logoTint:'original', lineQuiet:false, phonesPeak:false, echoLine:false, patch:null,
   bgDrift:0.5, bgColour:'', glitch:0, gSort:0, gMosh:0, gMirror:0, echo:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capStyle:'outline', capColour:'ink', capWeight:'500', capCase:'typed', capAnim:'fade', capSpacing:0, capIn:0.25, capOut:0.3, capHold:6, capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
@@ -20,6 +21,7 @@ const SLIDERS = {
   'g-motion':[['breathe','Breathing',0,1,0.01],['kick','Kick pulse',0,1,0.01],['sway','Sway',0,1,0.01],['rings','Kick rings',0,1,0.01],
     ['spectrum','Spectrum ticks',0,1,0.01],['misprint','Misprint',0,1,0.01]],
   'g-nod':[['nod','Nod depth',0,1,0.01],['nodGate','Nod from energy',0,1,0.01]],
+  'g-clip':[['clipIn','Clip starts (s)',0,4,0.05],['clipOut','Clip ends (s)',0.3,4,0.05]],
   'g-finish':[['fSticker','Sticker edge',0,1,0.01],['fShadow','Shadow',0,1,0.01],['fOffset','Riso offset',0,1,0.01]],
   'g-typeS':[['textScale','Text size',0.5,2.5,0.05]],
   'g-caps':[['capSize','Size',0.5,2.5,0.05],['capSpacing','Letter spacing',-0.05,0.3,0.01],['capIn','Fade in (s)',0,1.5,0.05],['capOut','Fade out (s)',0,1.5,0.05],['capHold','Max hold (s)',1,15,0.5]],
@@ -57,8 +59,8 @@ function syncUI(){
   if(typeof syncBgColour==='function') setTimeout(syncBgColour);
   if(typeof syncSeg==='function') setTimeout(syncSeg);
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint']) $(k).value = S[k];
-  $('useWordmark').checked = S.useWordmark; $('lineQuiet').checked=!!S.lineQuiet; $('phonesPeak').checked=!!S.phonesPeak; $('echoLine').checked=!!S.echoLine; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars']) $(k).value = S[k];
+  $('useWordmark').checked = S.useWordmark; $('lineQuiet').checked=!!S.lineQuiet; $('introAnim').checked=S.introAnim!==false; $('phonesPeak').checked=!!S.phonesPeak; $('echoLine').checked=!!S.echoLine; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
 function bindUI(){
@@ -72,10 +74,10 @@ function bindUI(){
       $(k+'-o').textContent = fmtVal(v); onChange(k);
     });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
-  for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist','lineQuiet','phonesPeak','echoLine']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
+  for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist','lineQuiet','phonesPeak','echoLine','introAnim']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
 }
 function onChange(k){
   if(k==='poseMode'){
@@ -88,6 +90,7 @@ function onChange(k){
   if(k==='font' || k==='fontCustom'){ $('fontCustomRow').hidden = S.font!=='custom'; ensureFont(); }
   if(k==='edge' || k==='frameShape' || (k==='paperCol' && (S.edge||'auto')==='auto')) refreshArt();
   if(['subject','frameShape'].includes(k) && typeof syncSubjectUI==='function') syncSubjectUI();
+  if(k==='clipIn' || k==='clipOut'){ clearTimeout(CLIP_T); CLIP_T=setTimeout(()=>CLIP.src && loadClip(CLIP.src, CLIP.name), 350); }
   if(k==='bpm' && A){ A.grid = beatGrid(); showGrid(); }
   if(k==='ink') wordmarkImg = null, loadWordmark();
   if(['ink','blue','paperCol'].includes(k)){ S.look='custom'; markLook(); }
@@ -320,7 +323,7 @@ function refreshArt(){
   overlayCache={}; makeClouds(S.blue); wordmarkImg=null; loadWordmark();
   for(const k of ['a','b','c','h']) if(IMGS[k]) IMGS[k]=maskPose(IMGS[k]._src);
   for(const k of ['cut','cutn','phones']) if(IMGS[k] && IMGS[k]._src){ const src=IMGS[k]._src; IMGS[k]=tintWhole(src); IMGS[k]._src=src; }
-  FIN = new WeakMap(); LOGO_C=null; LINE_C=null;
+  FIN = new WeakMap(); LOGO_C=null; LINE_C=null; if(typeof processClip==='function') processClip();
   NOD_SLOTS.forEach(buildNod); markLook(); requestDraw();
 }
 
@@ -351,6 +354,7 @@ async function loadImage(src){
   return await createImageBitmap(blob);
 }
 async function setPose(slot, src, name){
+  if(slot==='clip') return loadClip(src, name);
   const bmp = await loadImage(src); if(typeof drawTile==='function') drawTile(slot,bmp);
   setNote(slot, name || (typeof src==='string' ? 'Starter' : (src.name || 'Your file')));
   if(slot==='w' || slot==='bg') IMGS[slot] = bmp;
@@ -383,6 +387,58 @@ function alignOffset(baseImg, img){
     if(e<bestE){ bestE=e; best=[dx/n,dy/n]; } }
   return best;
 }
+/* ---------------- animated intro: a short clip of the mascot swaying, eased back and forth in time ----------------
+   Frames are pulled into one sheet once (720px cells), recoloured and masked like the stills; drawing is a pure function of t. */
+const CLIP = {src:null, name:'', raw:null, proc:null, n:0, cols:0, cell:720}; let CLIP_T=null, CLIP_JOB=0;
+async function loadClip(src, name){
+  const job=++CLIP_JOB, blob = src instanceof Blob ? src : await (await fetch(src)).blob();
+  CLIP.src=blob; CLIP.name=name || (typeof src==='string' ? 'Starter' : (src.name||'Your clip'));
+  const url=URL.createObjectURL(blob), v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto'; v.src=url;
+  try{
+    await new Promise((res,rej)=>{ v.onloadeddata=res; v.onerror=()=>rej(new Error('video')); });
+    const t0=Math.max(0,Math.min(S.clipIn||0, v.duration-0.1)), t1=Math.max(t0+0.2, Math.min(S.clipOut||1.6, v.duration)), n=Math.min(90, Math.round((t1-t0)*30)+1);
+    const cols=Math.ceil(Math.sqrt(n)), C=CLIP.cell, sheet=document.createElement('canvas'); sheet.width=sheet.height=cols*C; const x=sheet.getContext('2d');
+    for(let i=0;i<n;i++){
+      if(job!==CLIP_JOB) return;
+      await new Promise(r=>{ v.onseeked=r; v.currentTime = t0 + i/30 + 0.001; });
+      const s=Math.min(v.videoWidth,v.videoHeight), sx=(v.videoWidth-s)/2, sy=(v.videoHeight-s)/2;
+      x.drawImage(v, sx, sy, s, s, (i%cols)*C, Math.floor(i/cols)*C, C, C);
+      if(i===0) drawTile('clip', sheet);
+    }
+    Object.assign(CLIP,{raw:sheet,n,cols}); processClip(); setNote('clip', CLIP.name);
+    const tc=document.querySelector('.ftile[data-slot="clip"] canvas'); if(tc){ const tx=tc.getContext('2d'); tx.clearRect(0,0,tc.width,tc.height); tx.drawImage(sheet,0,0,C,C,0,0,tc.width,tc.height); }
+  }catch(e){ setNote('clip','Could not read'); }
+  finally{ URL.revokeObjectURL(url); }
+  requestDraw();
+}
+function processClip(){   // same recolour and edge mask as the still frames
+  if(!CLIP.raw) return; const C=CLIP.cell, sheet=tintCanvas(CLIP.raw), out=document.createElement('canvas'); out.width=out.height=CLIP.raw.width;
+  const o=out.getContext('2d'); o.drawImage(sheet,0,0);
+  const m=document.createElement('canvas'); m.width=m.height=C; const mx=m.getContext('2d');
+  if(S.frameShape==='rounded'){ mx.filter=`blur(${C*0.004}px)`; mx.fillStyle='#000'; mx.beginPath(); mx.roundRect(C*0.045,C*0.045,C*0.91,C*0.91,C*0.12); mx.fill(); }
+  else { const [r0,r1]=edgeRadii(), g=mx.createRadialGradient(C/2,C/2,C*r0,C/2,C/2,C*r1); g.addColorStop(0,'#000'); g.addColorStop(1,'rgba(0,0,0,0)'); mx.fillStyle=g; mx.fillRect(0,0,C,C); }
+  const tiled=document.createElement('canvas'); tiled.width=tiled.height=out.width; const tx=tiled.getContext('2d');
+  for(let i=0;i<CLIP.cols*CLIP.cols;i++) tx.drawImage(m,(i%CLIP.cols)*C,Math.floor(i/CLIP.cols)*C);
+  o.globalCompositeOperation='destination-in'; o.drawImage(tiled,0,0);   // one pass: every cell keeps its own disc
+  CLIP.proc=out; requestDraw();
+}
+let INTRO_C=null;
+function introEnd(){ for(const c of CUES) if(c.p!==0) return c.t; return A ? A.dur : Infinity; }
+function introFrame(t){
+  if(S.introAnim===false || !CLIP.proc || S.subject!=='mascot' || S.frameShape==='cutout') return null;
+  if(t > introEnd() + (+S.poseFade||3)) return null;
+  const beat = A && A.grid ? A.grid.beat : 60/128, P0 = beat*4*(+S.clipBars||2), end=introEnd();
+  // stretch the sway a touch so whole cycles fit the intro: it ends on the starting pose, which matches the still
+  const P = isFinite(end) && end>P0*0.5 ? end/Math.max(1,Math.round(end/P0)) : P0, ph = t>=end ? 0 : ((t%P)+P)%P/P;
+  const u=(1-Math.cos(2*Math.PI*ph))/2, xf=u*(CLIP.n-1), i=Math.floor(xf), f=xf-i, C=CLIP.cell, cols=CLIP.cols;
+  if(!INTRO_C){ INTRO_C=document.createElement('canvas'); INTRO_C.width=INTRO_C.height=C; }
+  const x=INTRO_C.getContext('2d'); x.clearRect(0,0,C,C);
+  const cell=k=>[(k%cols)*C, Math.floor(k/cols)*C];
+  const [ax,ay]=cell(i); x.globalAlpha=1; x.drawImage(CLIP.proc,ax,ay,C,C,0,0,C,C);
+  if(f>0.01 && i+1<CLIP.n){ const [bx,by]=cell(i+1); x.globalAlpha=f; x.drawImage(CLIP.proc,bx,by,C,C,0,0,C,C); x.globalAlpha=1; }   // blend neighbours so the slow ends stay smooth
+  return INTRO_C;
+}
+
 /* ---------------- subject art: cut-outs, logo plates, line art and print finishes ---------------- */
 // a logo saved without transparency: if the corners share one plain colour, flood it away from the edges (inner whites stay)
 async function knockOut(bmp){
@@ -888,9 +944,9 @@ function frameInner(ctx, W, H, t){
         if(cutKinds[0]!==cutKinds[1]){ cutKinds = mix<0.5 ? [cutKinds[0],cutKinds[0]] : [cutKinds[1],cutKinds[1]]; mix = 1; }   // different drawings cut cleanly, never ghost
         base = cutImg(cutKinds[0]); top = cutImg(cutKinds[1]); }
       else {
-        const imgs=[IMGS.a,IMGS.b,IMGS.c,IMGS.h||IMGS.b];
+        const intro = introFrame(t), imgs=[intro||IMGS.a,IMGS.b,IMGS.c,IMGS.h||IMGS.b];
         base = imgs[ps.from]||IMGS.a; top = imgs[ps.to]||IMGS.a;
-        if(ps.mix>=1){ const nf = nodFrame(t, ps.to); if(nf){ base = nf; top = nf; } }
+        if(ps.mix>=1 && !intro){ const nf = nodFrame(t, ps.to); if(nf){ base = nf; top = nf; } }
       }
       const echoImg = (S.echoLine && lineArt()) || top;
       if(S.echo>0.01 && echoImg){   // floating echoes of the subject, drifting outwards and fading
@@ -1350,6 +1406,7 @@ new ResizeObserver(()=>drawTimeline()).observe(tl);
 /* ---------------- files in ---------------- */
 async function takeFile(file, slot){
   try{
+    if(file.type.startsWith('video') && slot!=='audio'){ await setPose('clip', file); store.put(artKey('clip'), file, file.name); setStatus(`Loaded ${file.name} as the animated intro`); return; }
     if(file.type.startsWith('audio') || /\.(wav|mp3|flac|ogg|m4a|aiff?)$/i.test(file.name)){ await loadAudio(file); store.put('audio-'+(LIB?LIB.current:'x'), file, file.name); $('trackName').textContent = file.name; setNote('audio', file.name); return; }
     if(file.type.startsWith('image')){
       const nm = file.name.match(/nod[-_ ]?(side|flat|peak)[-_ ]?([12])/i);
@@ -1359,7 +1416,7 @@ async function takeFile(file, slot){
   }catch(err){ setStatus(`Couldn't read ${file.name}. Try a WAV, MP3, PNG or JPG.`, true); }
 }
 $('f-audio').addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0]));
-for(const s of ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
+for(const s of ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
 const app = $('app');
 app.addEventListener('dragover', e=>{ e.preventDefault(); app.classList.add('drop'); });
 app.addEventListener('dragleave', e=>{ if(e.target===app) app.classList.remove('drop'); });
@@ -1512,7 +1569,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
-const SHARED_KEYS = ['subject','frameShape','fSticker','fShadow','fOffset','logoTint','lineQuiet','phonesPeak','echoLine','look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
+const SHARED_KEYS = ['introAnim','clipIn','clipOut','clipBars','subject','frameShape','fSticker','fShadow','fOffset','logoTint','lineQuiet','phonesPeak','echoLine','look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
   'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
@@ -1790,9 +1847,9 @@ $('importFile').addEventListener('change', async e=>{
 /* ---------------- artwork per release group ----------------
    Mascot frames you drop in are saved for the current group; groups without their own use the starter set. */
 const STARTER = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/peak-face.jpg', w:'assets/wallpaper.jpg',
-  cut:'assets/cut.webp', cutn:'assets/cut-nophones.webp', phones:'assets/phones.webp', line:'assets/line.webp',
+  clip:'assets/intro-sway.mp4', cut:'assets/cut.webp', cutn:'assets/cut-nophones.webp', phones:'assets/phones.webp', line:'assets/line.webp',
   n1f:'assets/nod-flat-1.jpg', n2f:'assets/nod-flat-2.jpg', n1c:'assets/nod-side-1.jpg', n2c:'assets/nod-side-2.jpg', n1p:'assets/nod-peak-1.jpg', n2p:'assets/nod-peak-2.jpg' };
-const ART_SLOTS = ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo'];
+const ART_SLOTS = ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip'];
 const artKey = s => s==='bg' ? 'img-bg' : `img-${LIB ? grp().id : 'x'}-${s}`;
 let artGroup = null;
 async function loadArtwork(){
