@@ -75,7 +75,7 @@
           <div class="file"><label for="f-audio">Track</label><input type="file" id="f-audio" accept="audio/*"></div>
         </div>
         <span id="trackName" hidden></span>
-        <div class="row wide"><label for="bpm">Tempo</label><input type="text" id="bpm" inputmode="decimal" placeholder="Auto"></div>
+        <div class="row wide"><label for="bpm">Tempo</label><div class="bpmrow"><input type="text" id="bpm" inputmode="decimal" placeholder="Auto"><button type="button" class="tapbpm" id="tapBpm" title="Tap along with the beat to set the tempo">Tap tempo</button></div></div>
         <p class="hint">Detected: <span id="bpmFound" style="color:var(--fg)">–</span>. Type a BPM to override.</p>
       </div>
     </details>
@@ -103,8 +103,9 @@
         <div class="btns"><button id="whisperGo">Draft captions (beta)</button></div>
         <p class="hint">Listens to the vocal stem (or the track) and writes a first draft with timings. Downloads a speech model the first time: about 40, 75 or 250 MB. Best on a clean vocal stem; expect to fix some words.</p>
         <textarea id="lyrics" spellcheck="false" aria-label="Lyrics" placeholder="Paste your lyrics, one line per caption" style="min-height:80px"></textarea>
-        <div class="btns"><button class="primary" id="tapStart">Start tapping</button><button id="tapNext" disabled>Tap</button></div>
-        <p class="hint">Press Start, then Enter (or Tap) the moment each line begins. The timed lines appear below, where you can fix any.</p>
+        <div class="btns"><button class="primary" id="tapStart">Start tapping</button></div>
+        <button type="button" class="tappad" id="tapNext" disabled><b>TAP</b><span id="tapLine">Press Start, then tap here or press Enter as each line begins</span></button>
+        <p class="hint">The timed lines appear below, where you can fix any.</p>
         <textarea id="captions" spellcheck="false" aria-label="Captions" placeholder="0:42 first lyric line&#10;0:47 next line&#10;0:52"></textarea>
         <p class="hint">One line per cue: time, then the words. A time on its own clears the screen. Play the track and press "Stamp time" to drop in the current time.</p>
         <div class="btns"><button id="capNow">Stamp time</button></div>
@@ -122,10 +123,12 @@
       <div class="grp">
         <div class="looks" id="looks"></div>
         <p class="hint">A look sets the paper, ink and accent, and recolours the artwork's blue to match. Fine-tune below.</p>
-        <div class="row wide"><label for="ink">Ink</label><input type="color" id="ink"></div>
-        <div class="row wide"><label for="blue">Blue</label><input type="color" id="blue"></div>
-        <div class="row wide"><label for="paperCol">Paper / background</label><input type="color" id="paperCol"></div>
-        <div class="btns"><button id="paperAuto">Match paper to artwork</button></div>
+        <div class="inks">
+          <div class="inkchip"><input type="color" id="ink" aria-label="Ink colour"><span><b>Ink</b><input type="text" class="hex" data-for="ink" spellcheck="false" aria-label="Ink hex"></span><button type="button" class="drop" data-for="ink" aria-label="Pick ink colour from the screen" title="Pick from the screen" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M9.5 3.5l3 3M11 2a1.6 1.6 0 0 1 2.3 2.3L11.8 5.8 10.2 4.2zM10.6 5.4L4.5 11.5 3 13l-.5-.5L4 11l6.1-6.1"/></svg></button></div>
+          <div class="inkchip"><input type="color" id="blue" aria-label="Accent colour"><span><b>Accent</b><input type="text" class="hex" data-for="blue" spellcheck="false" aria-label="Accent hex"></span><button type="button" class="drop" data-for="blue" aria-label="Pick accent colour from the screen" title="Pick from the screen" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M9.5 3.5l3 3M11 2a1.6 1.6 0 0 1 2.3 2.3L11.8 5.8 10.2 4.2zM10.6 5.4L4.5 11.5 3 13l-.5-.5L4 11l6.1-6.1"/></svg></button></div>
+          <div class="inkchip"><input type="color" id="paperCol" aria-label="Paper colour"><span><b>Paper</b><input type="text" class="hex" data-for="paperCol" spellcheck="false" aria-label="Paper hex"></span><button type="button" class="drop" data-for="paperCol" aria-label="Pick paper colour from the screen" title="Pick from the screen" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M9.5 3.5l3 3M11 2a1.6 1.6 0 0 1 2.3 2.3L11.8 5.8 10.2 4.2zM10.6 5.4L4.5 11.5 3 13l-.5-.5L4 11l6.1-6.1"/></svg></button></div>
+        </div>
+        <div class="row wide matchrow"><label>Match colours</label><div class="seg"><button type="button" id="paperAuto" title="Set the paper from the artwork's own background">From artwork</button><button type="button" id="matchBg" title="Recolour the look from the current background scene">From the scene</button></div></div>
       </div>
     </details>
     <details open data-tab="look">
@@ -154,8 +157,9 @@
         <div class="files">
           <div class="files"><div class="file"><label for="f-bg">Your own image</label><input type="file" id="f-bg" accept="image/*"></div></div>
         </div>
-        <div class="btns"><button id="matchBg">Match look now</button><button id="clearSecBgs" hidden>Clear</button><button id="clearBg" hidden>Remove</button></div>
-        <div class="row wide"><label for="bgColour">Background colour</label><div style="display:flex;gap:8px;align-items:center;min-width:0"><input type="color" id="bgColour"><button type="button" class="linkbtn" id="bgColourReset" hidden>Same as paper</button></div></div>
+        <div class="btns"><button id="clearSecBgs" hidden>Clear</button><button id="clearBg" hidden>Remove</button></div>
+        <button type="button" class="linkbtn" id="bgColourShow">Use a different colour behind the scene</button>
+        <div class="row wide" id="bgColourRow" hidden><label for="bgColour">Behind the scene</label><div style="display:flex;gap:8px;align-items:center;min-width:0"><input type="color" id="bgColour"><button type="button" class="linkbtn" id="bgColourReset" hidden>Same as paper</button></div></div>
         <p class="hint" id="adjNote"></p>
         <div id="g-bg" class="grp" style="padding:0"></div>
       </div>
@@ -163,10 +167,13 @@
     <details open data-tab="look">
       <summary>Type</summary>
       <div class="grp">
-        <div class="row wide"><label for="font">Font</label><select id="font"></select></div>
+        <div class="row wide"><label for="font">Font</label><select id="font" class="vh" tabindex="-1" aria-hidden="true"></select><button type="button" class="fontbtn" id="fontBtn" aria-expanded="false" aria-controls="fontList"><span class="fsample" id="fontSample"></span><span class="fname" id="fontName"></span></button></div>
+        <div class="fontlist" id="fontList" role="listbox" aria-label="Fonts" hidden></div>
         <div class="row wide" id="fontCustomRow" hidden><label for="fontCustom">Installed font</label><input type="text" id="fontCustom" placeholder="Exact name, e.g. Futura PT"></div>
         <div id="g-typeS" class="grp" style="padding:0"></div>
-        <div class="row wide"><label for="textPos">Position</label><select id="textPos" data-seg><option value="bottom-left">Bottom left</option><option value="bottom-centre">Bottom centre</option><option value="top-left">Top left</option><option value="headline">Headline, centre</option><option value="headline-top">Headline, top</option><option value="headline-bottom">Headline, bottom</option><option value="off">Hidden</option></select></div>
+        <div class="row wide"><label>Style</label><div class="seg" id="textStyle" role="group" aria-label="Text style"><button type="button" data-v="label">Label</button><button type="button" data-v="headline">Headline</button><button type="button" data-v="off">None</button></div></div>
+        <div class="row wide"><label>Position</label><div class="anchor" id="anchor" role="group" aria-label="Text position"></div></div>
+        <div class="row wide" hidden><label for="textPos">Position</label><select id="textPos"><option value="bottom-left">Bottom left</option><option value="bottom-centre">Bottom centre</option><option value="bottom-right">Bottom right</option><option value="top-left">Top left</option><option value="top-centre">Top centre</option><option value="top-right">Top right</option><option value="headline">Headline, centre</option><option value="headline-top">Headline, top</option><option value="headline-bottom">Headline, bottom</option><option value="off">Hidden</option></select></div>
         <div class="row wide"><label for="showTitle">Show title</label><input type="checkbox" id="showTitle"></div>
         <div class="row wide"><label for="showArtist">Show artist</label><input type="checkbox" id="showArtist"></div>
         <div class="row wide"><label for="useWordmark">Wordmark</label><input type="checkbox" id="useWordmark"></div>
@@ -182,19 +189,16 @@
     <details data-tab="look">
       <summary>Mascot files</summary>
       <div class="grp">
-        <p class="hint">The character frames for this release group. Drop files on the page or pick them here; names like nod-side-1.png drop into place. Groups without their own frames use the starter set.</p>
-        <div class="files">
-          <div class="file"><label for="f-a">Flat light</label><input type="file" id="f-a" accept="image/*"></div>
-          <div class="file"><label for="f-b">Side light</label><input type="file" id="f-b" accept="image/*"></div>
-          <div class="file"><label for="f-c">Peak face</label><input type="file" id="f-c" accept="image/*"></div>
-          <div class="file"><label for="f-h">In-between</label><input type="file" id="f-h" accept="image/*"></div>
-          <div class="file"><label for="f-w">Wide scene</label><input type="file" id="f-w" accept="image/*"></div>
-          <div class="file"><label for="f-n1c">Side, slight</label><input type="file" id="f-n1c" accept="image/*"></div>
-          <div class="file"><label for="f-n2c">Side, deep</label><input type="file" id="f-n2c" accept="image/*"></div>
-          <div class="file"><label for="f-n1f">Flat, slight</label><input type="file" id="f-n1f" accept="image/*"></div>
-          <div class="file"><label for="f-n2f">Flat, deep</label><input type="file" id="f-n2f" accept="image/*"></div>
-          <div class="file"><label for="f-n1p">Peak, slight</label><input type="file" id="f-n1p" accept="image/*"></div>
-          <div class="file"><label for="f-n2p">Peak, deep</label><input type="file" id="f-n2p" accept="image/*"></div>
+        <p class="hint">The character frames for this release group. Click a frame to choose a file, or drop one on it; names like nod-side-1.png also drop into place anywhere on the page. Frames marked Starter come from the starter set.</p>
+        <div class="fgrid" id="fgrid">
+          <span></span><span class="fh">Base</span><span class="fh">Slight nod</span><span class="fh">Deep nod</span>
+          <span class="fr">Flat</span><button type="button" class="ftile" data-slot="a" aria-label="Flat light: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-a">Empty</span></button><input type="file" id="f-a" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n1f" aria-label="Flat, slight nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n1f">Empty</span></button><input type="file" id="f-n1f" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n2f" aria-label="Flat, deep nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n2f">Empty</span></button><input type="file" id="f-n2f" class="vh" accept="image/*" tabindex="-1" aria-hidden="true">
+          <span class="fr">Side</span><button type="button" class="ftile" data-slot="b" aria-label="Side light: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-b">Empty</span></button><input type="file" id="f-b" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n1c" aria-label="Side, slight nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n1c">Empty</span></button><input type="file" id="f-n1c" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n2c" aria-label="Side, deep nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n2c">Empty</span></button><input type="file" id="f-n2c" class="vh" accept="image/*" tabindex="-1" aria-hidden="true">
+          <span class="fr">Peak</span><button type="button" class="ftile" data-slot="c" aria-label="Peak face: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-c">Empty</span></button><input type="file" id="f-c" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n1p" aria-label="Peak, slight nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n1p">Empty</span></button><input type="file" id="f-n1p" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n2p" aria-label="Peak, deep nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n2p">Empty</span></button><input type="file" id="f-n2p" class="vh" accept="image/*" tabindex="-1" aria-hidden="true">
+        </div>
+        <div class="fextra">
+          <div><span class="fh">In-between</span><button type="button" class="ftile" data-slot="h" aria-label="In-between frame: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-h">Empty</span></button><input type="file" id="f-h" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>
+          <div><span class="fh">Wide scene</span><button type="button" class="ftile wide" data-slot="w" aria-label="Wide scene: choose or drop a file"><canvas width="192" height="108"></canvas><span class="fbadge" id="note-w">Empty</span></button><input type="file" id="f-w" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>
         </div>
         <div class="btns"><button id="forgetFiles">Forget saved files</button></div>
       </div>
@@ -234,8 +238,8 @@
         <div class="row wide"><label for="fps">Frame rate</label><select id="fps" data-seg><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
         <div class="row wide"><label for="formats">Formats</label><select id="formats" data-seg><option value="one">Current frame shape</option><option value="both">Both 16:9 and 9:16</option></select></div>
         <div class="row wide"><label for="range">Range</label><select id="range" data-seg><option value="full">Whole track</option><option value="test">15 s from playhead</option></select></div>
-        <div class="btns"><button class="primary" id="export" disabled>Render MP4</button><button id="canvasLoop" disabled>Spotify Canvas</button><button id="cancel" hidden>Cancel</button><button id="saveAgain" hidden>Save again</button></div>
-        <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+        <div class="recdeck" id="recdeck"><button class="rec" id="export" disabled aria-label="Render MP4"><i></i></button><div class="recinfo"><b id="recLabel">Render MP4</b><span id="recPct">Ready when the track is</span><div class="btns"><button id="canvasLoop" disabled>Spotify Canvas</button><button id="cancel" hidden>Cancel</button><button id="saveAgain" hidden>Save again</button></div></div></div>
+        <div class="progress" hidden aria-hidden="true"><div id="bar"></div></div>
         <p class="hint" id="exportNote">Frame-accurate. Best in Chrome or Edge. A full track at 1080p takes a few minutes; Spotify Canvas renders 8 silent seconds from the playhead as a seamless loop.</p>
       </div>
     </details>

@@ -32,15 +32,16 @@ try{ const saved = JSON.parse(localStorage.getItem('skixo-vis-settings')||'null'
 function persist(){ try{ localStorage.setItem('skixo-vis-settings', JSON.stringify(S)); }catch(e){} if(typeof saveLib==='function') saveLib(); }
 
 const $ = id => document.getElementById(id);
-const KNOB_GROUPS = ['g-motion','g-nod','g-glitch'];   // amounts you play by feel become knobs
+const KNOB_GROUPS = ['g-motion','g-nod','g-glitch','g-atmos'];
+const KNOB_SMALL = ['dashSpeed','cloudSpeed'];   // speed knobs sit beside their amount   // amounts you play by feel become knobs
 function buildSliders(){
   for(const [gid, list] of Object.entries(SLIDERS)){
     const g = $(gid);
     let kg=null;
-    if(KNOB_GROUPS.includes(gid)){ kg=document.createElement('div'); kg.className='kgrid'; g.appendChild(kg); }
+    if(KNOB_GROUPS.includes(gid)){ kg=document.createElement('div'); kg.className='kgrid'+(gid==='g-atmos'?' k4':''); g.appendChild(kg); }
     for(const [k,label,min,max,step] of list){
       const row = document.createElement('div'); row.className='row';
-      if(kg){ row.className='row kcell';
+      if(kg){ row.className='row kcell'+(KNOB_SMALL.includes(k)?' ksm':'');
         row.innerHTML = `<div class="knob" role="slider" tabindex="0" aria-labelledby="${k}-l" data-k="${k}"><svg viewBox="0 0 48 48" aria-hidden="true"><path class="kt"/><path class="kv"/><path class="kl"/></svg><i class="cap"></i></div><label id="${k}-l">${label}</label><input type="range" class="vh" id="${k}" min="${min}" max="${max}" step="any" tabindex="-1" aria-hidden="true"><output id="${k}-o"></output>`;
         kg.appendChild(row); continue; }
       row.innerHTML = `<label for="${k}">${label}</label><input type="range" id="${k}" min="${min}" max="${max}" step="${step}"><output id="${k}-o"></output>`;
@@ -98,7 +99,10 @@ const IMGS = { a:null, b:null, c:null, h:null, w:null, n1c:null, n2c:null, n1f:n
 const NOD_SLOTS = ['n1c','n2c','n1f','n2f','n1p','n2p'], RAW = {};   // masked canvases for poses, raw bitmap for wide scene
 let wordmarkSrc = null, wordmarkImg = null;
 /* file slots: hide the native input, show a button and what's loaded */
-function setNote(slot, text){ const el=document.getElementById('note-'+slot); if(el){ el.textContent=text; el.classList.toggle('mine', text!=='Starter' && text!=='Empty'); } }
+function setNote(slot, text){ const el=document.getElementById('note-'+slot); if(!el) return; const mine=text!=='Starter' && text!=='Empty';
+  el.classList.toggle('mine', mine);
+  if(el.classList.contains('fbadge')){ el.textContent = mine ? 'Yours' : text; el.title = text; if(text==='Empty' && typeof drawTile==='function') drawTile(slot,null); }
+  else el.textContent=text; }
 document.querySelectorAll('.file input[type=file]').forEach(inp=>{
   const slot = inp.id.slice(2); inp.classList.add('vh');
   const wrap = document.createElement('div'); wrap.className='pick';
@@ -331,7 +335,7 @@ async function loadImage(src){
   return await createImageBitmap(blob);
 }
 async function setPose(slot, src, name){
-  const bmp = await loadImage(src);
+  const bmp = await loadImage(src); if(typeof drawTile==='function') drawTile(slot,bmp);
   setNote(slot, name || (typeof src==='string' ? 'Starter' : (src.name || 'Your file')));
   if(slot==='w' || slot==='bg') IMGS[slot] = bmp;
   else if(NOD_SLOTS.includes(slot)){ RAW[slot] = bmp; buildNod(slot); }
@@ -489,7 +493,7 @@ async function loadAudio(src){
   buffer = await getCtx().decodeAudioData(ab);
   playhead = Math.min(playhead, buffer.duration-0.1);
   await analyse(buffer);
-  $('play').disabled = false; $('export').disabled = false; $('canvasLoop').disabled = false;
+  $('play').disabled = false; $('export').disabled = false; $('canvasLoop').disabled = false; if(typeof recProgress==='function') recProgress(null);
   requestDraw();
 }
 /* envelope from discrete hits, evaluated statelessly at t */
@@ -1051,12 +1055,13 @@ function drawText(ctx,W,H,U,tall,t){
   const title = S.showTitle===false ? '' : lc(S.title||''), artist = showA ? (S.artist||'') : '', credit = S.credit||'';
   const m = U*0.065;
   let x, y, align;
-  if(tall || S.textPos==='bottom-centre'){ align='center'; x=W/2; y= tall ? H*0.78 : H - m*1.05; }
-  else if(S.textPos==='top-left'){ align='left'; x=m; y=m+U*0.04; }
-  else { align='left'; x=m; y=H-m*1.05; }
+  const tp = S.textPos||'bottom-left', isTop = tp.startsWith('top-') && !tall, hpos = tall ? 'centre' : tp.split('-')[1];
+  align = hpos==='centre' ? 'center' : hpos==='right' ? 'right' : 'left';
+  x = align==='center' ? W/2 : align==='right' ? W-m : m;
+  y = tall ? H*0.78 : isTop ? m+U*0.04 : H-m*1.05;
   ctx.textAlign=align; ctx.textBaseline='alphabetic';
   const ts = U*(tall?0.05:0.044)*(S.textScale||1), as = U*(tall?0.028:0.024)*(S.textScale||1);
-  const topLeft = S.textPos==='top-left' && !tall;
+  const topLeft = isTop;
   const titleY = topLeft ? y : y - as*1.7;
   const artY = topLeft ? y + as*1.7 : y;
   // soft paper backing so dashes, clouds or a busy scene never cut through the type
@@ -1064,7 +1069,7 @@ function drawText(ctx,W,H,U,tall,t){
   const artW = !showA ? 0 : (S.useWordmark && wordmarkImg) ? as*1.25*wordmarkImg.naturalWidth/wordmarkImg.naturalHeight : (S.artist||'').length*as*0.72;
   const bw = Math.max(ctx.measureText(title).width, artW) + U*0.06;
   const top = titleY - ts*1.05, bottom = artY + as*(credit?1.9:0.75);
-  const bx = align==='center' ? x-bw/2 : x-U*0.03;
+  const bx = align==='center' ? x-bw/2 : align==='right' ? x-bw+U*0.03 : x-U*0.03;
   ctx.save(); ctx.fillStyle=S.paperCol; ctx.shadowColor=S.paperCol; ctx.shadowBlur=U*0.035;
   ctx.globalAlpha = S.layout==='wallpaper' ? 0.9 : 0.8;
   ctx.fillRect(bx, top, bw, bottom-top); ctx.restore();
@@ -1073,7 +1078,7 @@ function drawText(ctx,W,H,U,tall,t){
   if(!showA){}
   else if(S.useWordmark && wordmarkImg){
     const h = as*1.25, w = h*wordmarkImg.naturalWidth/wordmarkImg.naturalHeight;
-    const wx = align==='center' ? x-w/2 : x;
+    const wx = align==='center' ? x-w/2 : align==='right' ? x-w : x;
     ctx.drawImage(wordmarkImg, wx, artY-h*0.85, w, h);
   } else {
     ctx.font = `400 ${as}px ${FONT()}`; ctx.letterSpacing = `${as*0.12}px`;
@@ -1190,10 +1195,20 @@ function editLane(lane,t){
     let pos=0; for(const l of lines){ const m=l.match(/^\s*(\d+):(\d{1,2}(?:\.\d+)?)/); if(m && Math.abs((+m[1])*60+(+m[2])-caps[i].t)<0.001){ ta.focus(); ta.setSelectionRange(pos, pos+l.length); break; } pos+=l.length+1; }
   }
 }
-const LANE_TIPS={Scene:'Click to choose the background for this section', Mood:'Click to adjust how the track is split into sections', Captions:'Click a caption to edit it', Audio:'Click or drag to move the playhead'};
-tl.addEventListener('pointerdown', e=>{ const lane=laneAt(e); dragging = lane==='Audio' || lane==='Mood' || true; tl.setPointerCapture(e.pointerId); tlSeek(e); tl._lane=lane; tl._t=tAt(e); });
-tl.addEventListener('pointerup', e=>{ if(tl._lane && Math.abs(tAt(e)-tl._t) < (A?A.dur:1)*0.005 && tl._lane!=='Audio') editLane(tl._lane, tl._t); tl._lane=null; });
-tl.addEventListener('pointermove', e=>{ if(dragging) tlSeek(e); else tl.title=LANE_TIPS[laneAt(e)]||''; tl.style.cursor = laneAt(e)==='Audio' ? 'ew-resize' : 'pointer'; });
+const LANE_TIPS={Scene:'Click to choose the background for this section, or drag an edge to move it', Mood:'Click to adjust how the track is split into sections, or drag an edge to move it', Captions:'Click a caption to edit it', Audio:'Click or drag to move the playhead'};
+tl.addEventListener('pointerdown', e=>{ const ei=edgeAt(e); if(ei>0){ tl._edge=ei; tl.setPointerCapture(e.pointerId); return; } const lane=laneAt(e); dragging = lane==='Audio' || lane==='Mood' || true; tl.setPointerCapture(e.pointerId); tlSeek(e); tl._lane=lane; tl._t=tAt(e); });
+tl.addEventListener('pointerup', e=>{ if(tl._edge){ tl._edge=0; persist(); return; } if(tl._lane && Math.abs(tAt(e)-tl._t) < (A?A.dur:1)*0.005 && tl._lane!=='Audio') editLane(tl._lane, tl._t); tl._lane=null; });
+tl.addEventListener('pointermove', e=>{ if(tl._edge){ moveEdge(e); return; } if(dragging) tlSeek(e); else tl.title=LANE_TIPS[laneAt(e)]||''; tl.style.cursor = edgeAt(e)>0 ? 'col-resize' : laneAt(e)==='Audio' ? 'ew-resize' : 'pointer'; });
+/* section edges in the Scene and Mood lanes can be dragged; the first drag turns the auto split into your own cue list */
+function edgeAt(e){ if(!A || dragging) return -1; const lane=laneAt(e); if(lane!=='Scene' && lane!=='Mood') return -1;
+  const r=tl.getBoundingClientRect(), px=e.clientX-r.left, X=t=>TL_G+t/A.dur*(r.width-TL_G);
+  for(let i=1;i<CUES.length;i++) if(Math.abs(X(CUES[i].t)-px)<5) return i; return -1; }
+function moveEdge(e){
+  const i=tl._edge; if(!CUES[i]) return; const lo=CUES[i-1].t+0.5, hi=i+1<CUES.length ? CUES[i+1].t-0.5 : A.dur-0.5, t=Math.max(lo,Math.min(hi,tAt(e)));
+  if(S.poseMode!=='manual'){ S.poseMode='manual'; $('poseMode').value='manual'; $('autoPose').hidden=true; $('manualPose').hidden=false; syncSeg(); setStatus('Switched to your own cue list so the change sticks. Switch back on the Track tab any time.'); }
+  const c=CUES.map(q=>Object.assign({},q)); c[i].t=t; S.manualCues=cuesToText(c); $('manualCues').value=S.manualCues; rebuildCues();
+  if(!playing){ playhead=t; requestDraw(); }
+}
 tl.addEventListener('pointerup', ()=>{ dragging=false; });
 new ResizeObserver(()=>drawTimeline()).observe(tl);
 
@@ -1302,7 +1317,7 @@ async function renderVideo({W,H,fps,t0,t1,audio=true,loop=0,label=''}){
     venc.encode(vf, {keyFrame: i % (fps*2) === 0}); vf.close();
     while(venc.encodeQueueSize > 4) await new Promise(r=>setTimeout(r,1));
     if(i%10===0){
-      $('bar').style.width = (i/total*100).toFixed(1)+'%';
+      $('bar').style.width = (i/total*100).toFixed(1)+'%'; recProgress(i/total);
       const el=(performance.now()-startClock)/1000, eta = el/(i+1)*(total-i);
       setStatus(`Rendering ${label}${Math.round(i/total*100)}% · about ${fmtTime(eta)} left`, true);
       frame(sctx, stage.width, stage.height, t); drawPlayhead(t);
@@ -1316,7 +1331,8 @@ async function renderVideo({W,H,fps,t0,t1,audio=true,loop=0,label=''}){
   return new Blob([target.buffer], {type:'video/mp4'});
 }
 const slugT = ()=> (S.title||'visualiser').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-function busy(on){ $('export').disabled=on; $('canvasLoop').disabled=on; $('cancel').hidden=!on; if(on){ $('saveAgain').hidden=true; cancelExport=false; } else $('bar').style.width='0'; }
+function busy(on){ $('export').disabled=on; $('canvasLoop').disabled=on; $('cancel').hidden=!on; $('recdeck').classList.toggle('on',on); if(on){ $('saveAgain').hidden=true; cancelExport=false; recProgress(0); } else { $('bar').style.width='0'; recProgress(null); } }
+function recProgress(f){ const d=$('recdeck'); d.style.setProperty('--p', f==null?0:f); $('recPct').textContent = f==null ? (buffer?'Renders the range set above':'Ready when the track is') : `Rendering · ${Math.round(f*100)}%`; }
 $('export').addEventListener('click', async ()=>{
   if(!buffer) return;
   if(!('VideoEncoder' in window)){ $('exportNote').textContent = 'This browser cannot encode video. Open the page in Chrome or Edge to render.'; return; }
@@ -1420,7 +1436,7 @@ document.querySelectorAll('select[data-seg]').forEach(sel=>{
   if(sel.options.length>3) sel.closest('.row')?.classList.add('stack');
 });
 function syncTop(){ document.querySelectorAll('#frameTop button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===S.aspect)); }
-function syncSeg(){ syncTop(); document.querySelectorAll('select[data-seg]').forEach(sel=>sel.nextElementSibling.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===sel.value))); }
+function syncSeg(){ syncTop(); if(window.LOOKUI_READY) syncLookUI(); document.querySelectorAll('select[data-seg]').forEach(sel=>sel.nextElementSibling.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===sel.value))); }
 syncSeg();
 
 document.querySelectorAll('#frameTop button').forEach(b=>b.addEventListener('click',()=>{ const sel=$('aspect'); sel.value=b.dataset.v; sel.dispatchEvent(new Event('input',{bubbles:true})); syncSeg(); }));
@@ -1488,6 +1504,8 @@ function kEnv(k,t,st){   // 0..1: how much of this setting is landing at time t
     case 'nod': { if(!A.grid || energyAt(t)<st.nodGate) return 0; const P=A.grid.beat*(+S.nodEvery||1), ph=(((t-A.grid.phase+0.12*P)%P)+P)%P; return ph<0.45*P ? 1-ph/(0.45*P) : 0; }
     case 'gMirror': { if(!A.grid) return 0; const ph=(((t-A.grid.phase)%A.grid.beat)+A.grid.beat)%A.grid.beat; return Math.exp(-ph*4/A.grid.beat); }
     case 'gMosh': { let g=0; for(const c of CUES){ const a=t-c.t; if(a>=0&&a<0.8) g=Math.max(g,1-a/0.8); } return g; }
+    case 'dashes': return 0.35+0.65*hat(0.12);
+    case 'dashSpeed': case 'clouds': case 'cloudSpeed': case 'light': case 'grain': case 'vignette': return 1;
     default: return Math.min(1, glitchLevel(t)/Math.max(0.05,S.glitch));
   }
 }
@@ -1575,10 +1593,11 @@ $('whisperGo').addEventListener('click', async ()=>{
 
 /* ---------------- tap to time: paste lyrics, play, press Enter (or Tap) as each line starts ---------------- */
 let TAP=null;
-function tapShow(){ if(!TAP) return; const l=TAP.lines[TAP.i]; setStatus(l ? `Tap at: "${l}" (${TAP.i+1}/${TAP.lines.length}) · Enter to tap, Esc to stop` : 'Done'); $('tapNext').disabled=!l; }
-function tapEnd(msg){ TAP=null; $('tapNext').disabled=true; $('tapStart').textContent='Start tapping'; setStatus(msg||'Captions timed'); }
+function tapShow(){ if(!TAP) return; const l=TAP.lines[TAP.i]; $('tapLine').textContent = l ? `Next: ${l}` : 'Done'; setStatus(l ? `Tap at: "${l}" (${TAP.i+1}/${TAP.lines.length}) · Enter to tap, Esc to stop` : 'Done'); $('tapNext').disabled=!l; }
+function tapEnd(msg){ TAP=null; $('tapLine').textContent='Press Start, then tap here or press Enter as each line begins'; $('tapNext').disabled=true; $('tapStart').textContent='Start tapping'; setStatus(msg||'Captions timed'); }
 function tapStamp(){
   if(!TAP) return; const l=TAP.lines[TAP.i]; if(!l) return;
+  const pad=$('tapNext'); pad.classList.remove('hit'); void pad.offsetWidth; pad.classList.add('hit');
   TAP.out.push(`${fmtTime(now(),true)} ${l}`); TAP.i++;
   S.captions=TAP.out.join('\n'); $('captions').value=S.captions; onChange('captions');
   if(TAP.i>=TAP.lines.length) tapEnd(`All ${TAP.lines.length} lines timed. Fix any in the caption list.`); else tapShow();
@@ -1595,7 +1614,8 @@ document.addEventListener('keydown', e=>{ if(!TAP) return; if(e.key==='Enter'){ 
 
 $('bgColour').addEventListener('input', e=>{ S.bgColour=e.target.value; $('bgColourReset').hidden=false; persist(); requestDraw(); });
 $('bgColourReset').addEventListener('click', ()=>{ S.bgColour=''; $('bgColour').value=S.paperCol; $('bgColourReset').hidden=true; persist(); requestDraw(); });
-function syncBgColour(){ $('bgColour').value = S.bgColour || S.paperCol; $('bgColourReset').hidden = !S.bgColour; }
+function syncBgColour(){ $('bgColour').value = S.bgColour || S.paperCol; $('bgColourReset').hidden = !S.bgColour; if(S.bgColour) $('bgColourRow').hidden=false; $('bgColourShow').hidden = !$('bgColourRow').hidden; }
+$('bgColourShow').addEventListener('click',()=>{ $('bgColourRow').hidden=false; $('bgColourShow').hidden=true; });
 syncBgColour();
 
 /* ---------------- tabs ---------------- */
@@ -1660,3 +1680,83 @@ syncUI(); bindUI(); setAspect(); markLook();
     else setStatus('Drop a track anywhere to start');
   }catch(e){ setStatus('Could not load the starter files. Drop in a track and artwork to begin.', true); }
 })();
+
+/* ---------------- Look tab inputs: ink chips, text anchor, font specimens, frame grid, stage handles; tap tempo ---------------- */
+function setInput(id,v){ const i=$(id); i.value=v; i.dispatchEvent(new Event('input')); }
+// ink chips: hex fields and a screen eyedropper (Chrome and Edge)
+document.querySelectorAll('.hex').forEach(h=>{
+  const src=$(h.dataset.for);
+  h.addEventListener('change',()=>{ let v=h.value.trim(); if(/^[0-9a-f]{6}$/i.test(v)) v='#'+v; if(/^#[0-9a-f]{6}$/i.test(v)) setInput(src.id, v.toLowerCase()); syncLookUI(); });
+  h.addEventListener('keydown',e=>{ if(e.key==='Enter') h.blur(); });
+  src.addEventListener('input',()=>{ if(document.activeElement!==h) h.value=src.value.toUpperCase(); });
+});
+if('EyeDropper' in window) document.querySelectorAll('.inkchip .drop').forEach(b=>{ b.hidden=false;
+  b.addEventListener('click', async ()=>{ try{ const r=await new EyeDropper().open(); setInput(b.dataset.for, r.sRGBHex.slice(0,7)); syncLookUI(); }catch(e){} }); });
+$('bgColourReset').addEventListener('click',()=>{ $('bgColourRow').hidden=true; $('bgColourShow').hidden=false; });
+// text: style (label, headline, none) plus a 3x3 anchor
+const ANCHOR=[['top-left','top-centre','top-right'],[null,null,null],['bottom-left','bottom-centre','bottom-right']];
+const HEAD=['headline-top','headline','headline-bottom'];
+const ANCHOR_NAMES=['Top','Middle','Bottom'], COL_NAMES=['left','centre','right'];
+(function(){ const g=$('anchor'); for(let r=0;r<3;r++) for(let c=0;c<3;c++){ const b=document.createElement('button'); b.type='button'; b.dataset.r=r; b.dataset.c=c; b.setAttribute('aria-label',`${ANCHOR_NAMES[r]} ${COL_NAMES[c]}`); g.appendChild(b);
+  b.addEventListener('click',()=>{ const st=textStyle(); const v = st==='headline' ? (c===1 ? HEAD[r] : null) : ANCHOR[r][c]; if(v){ setInput('textPos',v); syncLookUI(); } }); } })();
+function textStyle(){ const v=S.textPos||'bottom-left'; return v==='off' ? 'off' : v.startsWith('headline') ? 'headline' : 'label'; }
+document.querySelectorAll('#textStyle button').forEach(b=>b.addEventListener('click',()=>{ const want=b.dataset.v, cur=textStyle(); if(want===cur) return;
+  const v=S.textPos||'', top=v.includes('top'), bottom=v.includes('bottom')||v==='off';
+  setInput('textPos', want==='off' ? 'off' : want==='headline' ? (top?'headline-top':v==='headline'||!bottom?'headline':'headline-bottom') : (top?'top-left':'bottom-left')); syncLookUI(); }));
+// font specimens: each font shown in its own face with your title
+const FONT_PREVIEW_CHARS='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,!?&\'-';
+(function(){ const l=document.createElement('link'); l.rel='stylesheet';
+  l.href='https://fonts.googleapis.com/css2?'+GFONTS.filter(f=>f!=='Libre Franklin').map(f=>'family='+encodeURIComponent(f).replace(/%20/g,'+')).join('&')+'&text='+encodeURIComponent(FONT_PREVIEW_CHARS)+'&display=swap';
+  document.head.appendChild(l); })();
+const fontSampleText=()=>{ const t=S.title||'glad you came'; return S.lowercase ? t.toLowerCase().replace(/skixo/g,'skixO') : t; };
+(function(){ const list=$('fontList');
+  list.innerHTML=[...GFONTS,'custom'].map(f=>`<button type="button" role="option" data-f="${f}"><span class="fsample" style="font-family:${f==='custom'?'var(--ui)':`'${f}', var(--ui)`}"></span><span class="fname">${f==='custom'?'An installed font':f}</span></button>`).join('');
+  const close=()=>{ list.hidden=true; $('fontBtn').setAttribute('aria-expanded','false'); };
+  $('fontBtn').addEventListener('click',()=>{ list.hidden=!list.hidden; $('fontBtn').setAttribute('aria-expanded',String(!list.hidden)); if(!list.hidden){ syncLookUI(); (list.querySelector('[aria-selected="true"]')||list.firstElementChild).focus(); } });
+  list.addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b) return; setInput('font',b.dataset.f); close(); syncLookUI(); $('fontBtn').focus(); if(b.dataset.f==='custom') $('fontCustom').focus(); });
+  list.addEventListener('keydown',e=>{ const items=[...list.children], i=items.indexOf(document.activeElement);
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); items[(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length].focus(); }
+    else if(e.key==='Escape'){ close(); $('fontBtn').focus(); } });
+})();
+// mascot frame grid: thumbnails, click to choose, drop onto a frame
+function drawTile(slot,bmp){ const c=document.querySelector(`.ftile[data-slot="${slot}"] canvas`); if(!c) return; const x=c.getContext('2d'); x.clearRect(0,0,c.width,c.height); if(!bmp) return;
+  const sc=Math.max(c.width/bmp.width, c.height/bmp.height), w=bmp.width*sc, h=bmp.height*sc; x.drawImage(bmp,(c.width-w)/2,(c.height-h)/2,w,h); }
+document.querySelectorAll('.ftile').forEach(t=>{ const slot=t.dataset.slot;
+  t.addEventListener('click',()=>$('f-'+slot).click());
+  t.addEventListener('dragover',e=>{ e.preventDefault(); e.stopPropagation(); t.classList.add('over'); });
+  t.addEventListener('dragleave',()=>t.classList.remove('over'));
+  t.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); t.classList.remove('over'); $('app').classList.remove('drop'); const f=e.dataTransfer.files[0]; if(f) takeFile(f,slot); });
+});
+for(const k of Object.keys(IMGS)){ const src = RAW[k] || (IMGS[k] && (IMGS[k]._src||IMGS[k])); if(src && src.width) drawTile(k, src); }
+// stage handles: drag the portrait to move it, scroll to resize, double-click to reset
+(function(){ const st=$('stage'), wrap=$('stagewrap'); let sd=null;
+  const hint=document.createElement('div'); hint.className='stagehint'; hint.textContent='Drag to move · scroll to resize · double-click to reset'; wrap.appendChild(hint);
+  const on=()=>S.layout!=='wallpaper';
+  const setR=(k,v)=>{ const i=$(k); setInput(k, Math.round(Math.max(+i.min,Math.min(+i.max,v))*1000)/1000); };
+  st.addEventListener('pointerdown',e=>{ if(e.button||!on()) return; e.preventDefault(); sd={y:e.clientY,v:+S.portraitY||0}; st.setPointerCapture(e.pointerId); wrap.classList.add('grab'); });
+  st.addEventListener('pointermove',e=>{ if(!sd) return; setR('portraitY', sd.v + (e.clientY-sd.y)/st.getBoundingClientRect().height); });
+  const up=()=>{ sd=null; wrap.classList.remove('grab'); }; st.addEventListener('pointerup',up); st.addEventListener('pointercancel',up);
+  st.addEventListener('wheel',e=>{ if(!on()) return; e.preventDefault(); setR('badgeSize', S.badgeSize - Math.sign(e.deltaY)*(e.shiftKey?0.0025:0.01)); },{passive:false});
+  st.addEventListener('dblclick',()=>{ if(!on()) return; setR('portraitY',0); setR('badgeSize',DEFAULTS.badgeSize); });
+  wrap.classList.add('handles');
+})();
+// tap tempo
+(function(){ let taps=[]; const b=$('tapBpm');
+  b.addEventListener('click',()=>{ const n=performance.now(); if(taps.length && n-taps[taps.length-1]>2000) taps=[]; taps.push(n); taps=taps.slice(-9);
+    b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit');
+    if(taps.length<4){ b.textContent=`Tap ${taps.length}…`; return; }
+    const iv=(taps[taps.length-1]-taps[0])/(taps.length-1), bpm=Math.round(600000/iv)/10; b.textContent=`${bpm} BPM`; setInput('bpm', String(bpm));
+    clearTimeout(b._t); b._t=setTimeout(()=>{ b.textContent='Tap tempo'; taps=[]; },2500); });
+})();
+function syncLookUI(){
+  document.querySelectorAll('.hex').forEach(h=>{ if(document.activeElement!==h) h.value=$(h.dataset.for).value.toUpperCase(); });
+  const st=textStyle(), v=S.textPos||'bottom-left';
+  document.querySelectorAll('#textStyle button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===st));
+  document.querySelectorAll('#anchor button').forEach(b=>{ const r=+b.dataset.r, c=+b.dataset.c, val = st==='headline' ? (c===1?HEAD[r]:null) : st==='label' ? ANCHOR[r][c] : null;
+    b.disabled=!val; b.setAttribute('aria-pressed', !!val && val===v); });
+  const f=S.font==='custom' ? (S.fontCustom||'') : S.font;
+  $('fontSample').textContent=fontSampleText(); $('fontSample').style.fontFamily = f ? `'${f}', var(--ui)` : 'var(--ui)'; $('fontName').textContent = S.font==='custom' ? (S.fontCustom||'Installed font') : S.font;
+  document.querySelectorAll('#fontList [data-f]').forEach(b=>{ b.setAttribute('aria-selected', b.dataset.f===S.font); b.querySelector('.fsample').textContent = b.dataset.f==='custom' ? 'Installed font…' : fontSampleText(); });
+}
+for(const k of ['title','lowercase','fontCustom']) $(k).addEventListener(k==='lowercase'?'change':'input', ()=>syncLookUI());
+window.LOOKUI_READY=true; syncLookUI(); recProgress(null);
