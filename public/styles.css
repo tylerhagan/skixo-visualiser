@@ -170,15 +170,15 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-s
 .rail input[type=checkbox]:checked::after{left:18px;background:var(--kacc)}
 /* ink chips */
 .inks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.inkchip{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 6px 6px 8px;min-width:0;position:relative}
-.inkchip input[type=color]{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:50%;border:0;padding:0;background:none;cursor:pointer;flex:none}
+.inkchip{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 22px 6px 6px;min-width:0;position:relative}
+.inkchip input[type=color]{appearance:none;-webkit-appearance:none;width:22px;height:22px;border-radius:50%;border:0;padding:0;background:none;cursor:pointer;flex:none}
 .inkchip input[type=color]::-webkit-color-swatch-wrapper{padding:0}
 .inkchip input[type=color]::-webkit-color-swatch{border:1px solid #ffffff30;border-radius:50%}
 .inkchip span{display:flex;flex-direction:column;min-width:0;flex:1}
 .inkchip b{font-size:11px;font-weight:500;color:var(--muted)}
-.inkchip .hex{font-family:var(--mono);font-size:11px;color:var(--fg);background:none;border:0;padding:0;width:100%;min-width:0}
+.inkchip .hex{font-family:var(--mono);font-size:10.5px;color:var(--fg);background:none;border:0;padding:0;width:100%;min-width:0}
 .inkchip .hex:focus{outline:none;color:var(--kacc)}
-.inkchip .drop{position:absolute;top:3px;right:3px;width:20px;height:20px;padding:3px;border:0;background:none;border-radius:4px;color:var(--muted)}
+.inkchip .drop{position:absolute;top:50%;right:3px;transform:translateY(-50%);width:20px;height:20px;padding:3px;border:0;background:none;border-radius:4px;color:var(--muted)}
 .inkchip .drop:hover{color:var(--fg);background:var(--raise)}
 .inkchip .drop svg{width:100%;height:100%}
 .matchrow .seg button{flex:1 1 0}
