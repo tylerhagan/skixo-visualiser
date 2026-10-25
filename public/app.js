@@ -32,11 +32,17 @@ try{ const saved = JSON.parse(localStorage.getItem('skixo-vis-settings')||'null'
 function persist(){ try{ localStorage.setItem('skixo-vis-settings', JSON.stringify(S)); }catch(e){} if(typeof saveLib==='function') saveLib(); }
 
 const $ = id => document.getElementById(id);
+const KNOB_GROUPS = ['g-motion','g-nod','g-glitch'];   // amounts you play by feel become knobs
 function buildSliders(){
   for(const [gid, list] of Object.entries(SLIDERS)){
     const g = $(gid);
+    let kg=null;
+    if(KNOB_GROUPS.includes(gid)){ kg=document.createElement('div'); kg.className='kgrid'; g.appendChild(kg); }
     for(const [k,label,min,max,step] of list){
       const row = document.createElement('div'); row.className='row';
+      if(kg){ row.className='row kcell';
+        row.innerHTML = `<div class="knob" role="slider" tabindex="0" aria-labelledby="${k}-l" data-k="${k}"><svg viewBox="0 0 48 48" aria-hidden="true"><path class="kt"/><path class="kv"/><path class="kl"/></svg><i class="cap"></i></div><label id="${k}-l">${label}</label><input type="range" class="vh" id="${k}" min="${min}" max="${max}" step="any" tabindex="-1" aria-hidden="true"><output id="${k}-o"></output>`;
+        kg.appendChild(row); continue; }
       row.innerHTML = `<label for="${k}">${label}</label><input type="range" id="${k}" min="${min}" max="${max}" step="${step}"><output id="${k}-o"></output>`;
       g.appendChild(row);
     }
@@ -1103,7 +1109,7 @@ function render(){
 function loop(){ if(!playing) return; render(); if(now()>=buffer.duration-0.01){ stop(); playhead=0; requestDraw(); return; } requestAnimationFrame(loop); }
 function play(){
   if(!buffer) return; const c=getCtx(); c.resume();
-  srcNode = c.createBufferSource(); srcNode.buffer=buffer; srcNode.connect(monitorGain());
+  srcNode = c.createBufferSource(); srcNode.buffer=buffer; srcNode.connect(monitorGain()); srcNode.connect(meterIn());
   if(playhead>=buffer.duration-0.05) playhead=0;
   startedAt = c.currentTime - playhead; srcNode.start(0, playhead); playing=true; setIcon(); loop();
 }
@@ -1429,11 +1435,105 @@ function showMotionSec(){
   document.querySelectorAll('#mslotSeg button').forEach(b=>{ b.setAttribute('aria-pressed', b.dataset.v===ms); b.classList.toggle('has', b.dataset.v!=='all' && !!(m[b.dataset.v] && Object.keys(m[b.dataset.v]).length)); });
   const names={all:'every section (the defaults)',q:'quiet sections',l:'lifted sections',p:'peak moments'};
   const has = ms!=='all' && m[ms] && Object.keys(m[ms]).length;
-  $('mslotNote').innerHTML = `Movement, nod and glitch sliders now change <b>${names[ms]}</b>.` + (ms!=='all' ? (has ? ' Changed sliders are marked. <button type="button" class="linkbtn" id="mReset">Use defaults for this section</button>' : ' Nothing changed yet; it uses the defaults.') : '');
+  $('mslotNote').innerHTML = `Movement, nod and glitch knobs now change <b>${names[ms]}</b>.` + (ms!=='all' ? (has ? ' Changed knobs are marked. <button type="button" class="linkbtn" id="mReset">Use defaults for this section</button>' : ' Nothing changed yet; it uses the defaults.') : '');
   const r=$('mReset'); if(r) r.onclick=()=>{ S.mAdj[ms]={}; persist(); showMotionSec(); requestDraw(); };
 }
 document.querySelectorAll('#mslotSeg button').forEach(b=>b.addEventListener('click',()=>{ $('mslot').dataset.v=b.dataset.v; showMotionSec(); }));
 showMotionSec();
+
+/* ---------------- tactile controls: knobs with live rings, section pads, LCD, beat light, meters ----------------
+   Knobs drive the hidden range inputs, so saving, sections and override dots work exactly as the sliders did.
+   While the track plays, the bright ring shows what each setting is doing right now; at rest it shows the value. */
+const K_A0=-135, K_A1=135;
+function kPolar(r,a){ const q=(a-90)*Math.PI/180; return [24+r*Math.cos(q), 24+r*Math.sin(q)]; }
+function kArc(a0,a1){ if(a1-a0<0.6) a1=a0+0.6; const r=21, [x0,y0]=kPolar(r,a0), [x1,y1]=kPolar(r,a1); return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${a1-a0>180?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; }
+function uiTone(hex){   // lift a look colour so it reads on the dark studio
+  let m=/^#?([0-9a-f]{6})$/i.exec(hex||''); if(!m) return '#8db2cb';
+  const n=parseInt(m[1],16); let r=(n>>16)/255, g=(n>>8&255)/255, b=(n&255)/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b); let h=0, sat=0, l=(mx+mn)/2;
+  if(mx!==mn){ const d=mx-mn; sat=l>0.5?d/(2-mx-mn):d/(mx+mn); h = mx===r?((g-b)/d+(g<b?6:0)) : mx===g?((b-r)/d+2) : ((r-g)/d+4); h/=6; }
+  l=Math.max(l,0.64); sat=Math.min(sat,0.6);
+  const f=(p,q,t)=>{ t=(t+1)%1; return t<1/6?p+(q-p)*6*t : t<1/2?q : t<2/3?p+(q-p)*(2/3-t)*6 : p; };
+  const q=l<0.5?l*(1+sat):l+sat-l*sat, p2=2*l-q, hx=v=>Math.round(v*255).toString(16).padStart(2,'0');
+  return '#'+hx(f(p2,q,h+1/3))+hx(f(p2,q,h))+hx(f(p2,q,h-1/3));
+}
+const KN=[];
+document.querySelectorAll('.knob').forEach(kn=>{
+  const k=kn.dataset.k, inp=$(k), min=+inp.min, max=+inp.max, span=max-min, cell=kn.closest('.row');
+  const [tr,va,li]=kn.querySelectorAll('path'), cap=kn.querySelector('.cap');
+  tr.setAttribute('d', kArc(K_A0,K_A1));
+  kn.setAttribute('aria-valuemin',min); kn.setAttribute('aria-valuemax',max);
+  const set=v=>{ v=Math.round(Math.max(min,Math.min(max,v))*1000)/1000; if(v===+inp.value) return; inp.value=v; inp.dispatchEvent(new Event('input')); };
+  let lastY=null;
+  kn.addEventListener('pointerdown',e=>{ if(e.button) return; e.preventDefault(); kn.focus(); kn.setPointerCapture(e.pointerId); lastY=e.clientY; cell.classList.add('drag'); });
+  kn.addEventListener('pointermove',e=>{ if(lastY===null) return; const d=lastY-e.clientY; lastY=e.clientY; set(+inp.value + d*span/(e.shiftKey?1600:160)); });
+  const up=()=>{ lastY=null; cell.classList.remove('drag'); };
+  kn.addEventListener('pointerup',up); kn.addEventListener('pointercancel',up);
+  kn.addEventListener('dblclick',()=>set(DEFAULTS[k]));
+  kn.addEventListener('wheel',e=>{ if(document.activeElement!==kn) return; e.preventDefault(); set(+inp.value - Math.sign(e.deltaY)*span*(e.shiftKey?0.002:0.02)); },{passive:false});   // only once selected, so scrolling the panel never turns a knob
+  kn.addEventListener('keydown',e=>{
+    const st=span*(e.shiftKey?0.002:0.01), m={ArrowUp:st,ArrowRight:st,ArrowDown:-st,ArrowLeft:-st,PageUp:span*0.1,PageDown:-span*0.1}[e.key];
+    if(m!==undefined){ e.preventDefault(); set(+inp.value+m); } else if(e.key==='Home'){ e.preventDefault(); set(DEFAULTS[k]); }
+  });
+  KN.push({k,inp,min,span,kn,va,li,cap,last:''});
+});
+function kEnv(k,t,st){   // 0..1: how much of this setting is landing at time t
+  const kick=d=>hitEnv(A.kicks,t,d), hat=d=>hitEnv(A.hats,t,d);
+  switch(k){
+    case 'breathe': return 0.5+0.5*Math.sin(t*2*Math.PI/7.5);
+    case 'sway': return Math.min(1,Math.abs(Math.sin(t*2*Math.PI/13)*0.8+Math.sin(t*2*Math.PI/5.3)*0.2));
+    case 'kick': case 'misprint': return kick(0.16);
+    case 'rings': case 'echo': return kick(0.25);
+    case 'spectrum': return hat(0.09);
+    case 'nod': { if(!A.grid || energyAt(t)<st.nodGate) return 0; const P=A.grid.beat*(+S.nodEvery||1), ph=(((t-A.grid.phase+0.12*P)%P)+P)%P; return ph<0.45*P ? 1-ph/(0.45*P) : 0; }
+    case 'gMirror': { if(!A.grid) return 0; const ph=(((t-A.grid.phase)%A.grid.beat)+A.grid.beat)%A.grid.beat; return Math.exp(-ph*4/A.grid.beat); }
+    case 'gMosh': { let g=0; for(const c of CUES){ const a=t-c.t; if(a>=0&&a<0.8) g=Math.max(g,1-a/0.8); } return g; }
+    default: return Math.min(1, glitchLevel(t)/Math.max(0.05,S.glitch));
+  }
+}
+const PAD_COL={all:null,q:POSE_COLS[0],l:POSE_COLS[1],p:POSE_COLS[2]};
+let uiBlue='', meterL=0, meterR=0, anL=null, anR=null, anBuf=null;
+function meterIn(){   // taps the track before the preview volume
+  const c=getCtx();
+  if(!anL){ const sp=c.createChannelSplitter(2), sink=c.createGain(); sink.gain.value=0; anL=c.createAnalyser(); anR=c.createAnalyser(); anL.fftSize=anR.fftSize=1024;
+    sp.connect(anL,0); sp.connect(anR,1); anL.connect(sink); anR.connect(sink); sink.connect(c.destination); anL.inp=sp; anBuf=new Float32Array(1024); }
+  return anL.inp;
+}
+function rms(an){ an.getFloatTimeDomainData(anBuf); let p=0; for(let i=0;i<anBuf.length;i++){ const v=Math.abs(anBuf[i]); if(v>p) p=v; } return p; }
+function uiTick(){
+  if(S.blue!==uiBlue){ uiBlue=S.blue; const c=uiTone(S.blue); document.documentElement.style.setProperty('--kacc',c);
+    PAD_COL.all=c; document.querySelectorAll('#mslotSeg button').forEach(b=>b.style.setProperty('--pc', uiTone(PAD_COL[b.dataset.v]||c))); }
+  const t=now(), live=playing && !!A, vis=KN.length && KN[0].kn.offsetParent;
+  if(vis){
+    const st=live?motionAt(t):S;
+    for(const o of KN){
+      const v=+o.inp.value, f=(v-o.min)/o.span;
+      let lf=f; if(live){ const e=kEnv(o.k,t,st); lf = o.k==='nodGate' ? energyAt(t) : ((st[o.k]-o.min)/o.span)*e; }
+      const key=(f*500|0)+'/'+(live?(lf*500|0):'-');
+      if(key===o.last) continue; o.last=key;
+      const a=K_A0+(K_A1-K_A0)*f;
+      o.cap.style.transform=`rotate(${a.toFixed(1)}deg)`; o.va.setAttribute('d',kArc(K_A0,a));
+      o.kn.classList.toggle('live',live);
+      if(live) o.li.setAttribute('d',kArc(K_A0,K_A0+(K_A1-K_A0)*Math.max(0,Math.min(1,lf))));
+      o.kn.setAttribute('aria-valuenow',v); o.kn.setAttribute('aria-valuetext',fmtVal(v));
+    }
+    const sec=live?SECK[Math.min(poseState(t).to,2)]:null;
+    document.querySelectorAll('#mslotSeg button').forEach(b=>b.classList.toggle('live', b.dataset.v===sec));
+  }
+  // LCD: bar.beat from the beat grid, light on every beat (brighter on the one)
+  const g=A&&A.grid, led=$('beatled');
+  if(g){ const bi=Math.floor((t-g.phase)/g.beat), ph=(((t-g.phase)%g.beat)+g.beat)%g.beat;
+    $('lbar').textContent = bi>=0 ? `${Math.floor(bi/4)+1}.${bi%4+1}` : '–.–'; $('lbpm').textContent=`${g.bpm.toFixed(1)} BPM`;
+    const on=live && ph<Math.min(0.11,g.beat*0.22); led.classList.toggle('hit',on && bi%4!==0); led.classList.toggle('one',on && bi%4===0);
+  } else { $('lbar').textContent='–.–'; $('lbpm').textContent='– BPM'; led.className='led'; }
+  // meters: peak level in dB, quick attack, slow fall
+  let l=0, r=0; if(live && anL){ l=rms(anL); r=buffer.numberOfChannels>1?rms(anR):l; }
+  const db=x=>Math.max(0,Math.min(1,(20*Math.log10(x+1e-6)+48)/48));
+  meterL=Math.max(db(l),meterL*0.9); meterR=Math.max(db(r),meterR*0.9);
+  const bars=$('meter').querySelectorAll('b'); bars[0].style.clipPath=`inset(${(100-meterL*100).toFixed(1)}% 0 0 0)`; bars[1].style.clipPath=`inset(${(100-meterR*100).toFixed(1)}% 0 0 0)`;
+  requestAnimationFrame(uiTick);
+}
+requestAnimationFrame(uiTick);
 
 /* ---------------- draft captions with Whisper (beta) ----------------
    Runs in a Web Worker using transformers.js; the model downloads on first use and is then cached. */

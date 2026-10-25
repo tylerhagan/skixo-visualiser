@@ -123,3 +123,41 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-s
 .row.ovr label::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:1px}
 .seg button.has::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:2px}
 .row.dim{opacity:.45}
+/* tactile controls: knobs for the amounts you play by feel, section pads, LCD, beat light and meters. --kacc follows the look. */
+:root{--kacc:#8db2cb}
+.kgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 6px;padding:4px 0 2px}
+.kgrid .row.kcell{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;position:relative}
+.knob{position:relative;width:48px;height:48px;flex:none;border-radius:50%;cursor:ns-resize;touch-action:none;outline:none;user-select:none}
+.knob svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.knob path{fill:none;stroke-width:3;stroke-linecap:round}
+.knob .kt{stroke:var(--line)}
+.knob .kv{stroke:var(--kacc)}
+.knob .kl{stroke:var(--kacc);opacity:0;filter:drop-shadow(0 0 3px var(--kacc))}
+.knob.live .kv{opacity:.45}
+.knob.live .kl{opacity:1}
+.knob .cap{position:absolute;inset:8px;border-radius:50%;background:radial-gradient(circle at 50% 0%,#353b41,#1d2124 70%);box-shadow:0 2px 4px #0009,inset 0 1px 0 #ffffff14,0 0 0 1px #0b0c0d}
+.knob .cap::after{content:"";position:absolute;left:50%;top:9%;width:2px;height:30%;margin-left:-1px;border-radius:1px;background:var(--fg)}
+.knob:focus .cap{box-shadow:0 2px 4px #0009,inset 0 1px 0 #ffffff14,0 0 0 1.5px var(--kacc)}
+.knob:focus-visible{box-shadow:0 0 0 2px var(--kacc)}
+.kcell label{font-size:11px;line-height:1.25;color:#b9bdb8;text-align:center;max-width:100%;overflow-wrap:anywhere}
+.kcell output{font-family:var(--mono);font-size:10px;color:var(--kacc);height:12px;line-height:12px;text-align:center;opacity:0;transition:opacity .15s}
+.kcell:hover output,.kcell:focus-within output,.kcell.drag output{opacity:1}
+.pads{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.pads button{position:relative;height:40px;border-radius:6px;background:var(--raise);border:1px solid var(--line);color:var(--muted);font-size:12px;font-weight:500;overflow:hidden;padding:0 4px;transition:box-shadow .08s}
+.pads button::before{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--pc,var(--kacc));opacity:.5}
+.pads button[aria-pressed="true"]{color:var(--fg);background:color-mix(in srgb,var(--pc,var(--kacc)) 20%,var(--raise));border-color:var(--pc,var(--kacc))}
+.pads button[aria-pressed="true"]::before{opacity:1}
+.pads button.live{box-shadow:0 0 12px color-mix(in srgb,var(--pc) 45%,transparent),inset 0 0 0 1px var(--pc)}
+.pads button:active{transform:translateY(1px)}
+.pads button.has::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--kacc);margin-left:5px;vertical-align:2px}
+.lcd{display:flex;align-items:center;gap:12px;background:#0b0c0d;border:1px solid var(--line);border-radius:4px;padding:5px 10px;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.lcd .time{color:var(--fg);font-size:12px}
+.lbar,.lbpm{color:var(--muted);font-size:11px}
+.lbar{min-width:34px}
+.led{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+.led.hit{background:var(--kacc);box-shadow:0 0 8px var(--kacc)}
+.led.one{background:var(--fg);box-shadow:0 0 9px var(--fg)}
+.meter{display:flex;gap:2px;height:24px;width:13px;flex:none}
+.meter i{flex:1;background:#0b0c0d;border-radius:1px;position:relative;overflow:hidden}
+.meter b{position:absolute;inset:0;background:linear-gradient(0deg,var(--kacc) 0 72%,var(--warn) 72% 90%,#d0654f 90%);clip-path:inset(100% 0 0 0)}
+@media (max-width:560px){ .lbar,.lbpm{display:none} }
