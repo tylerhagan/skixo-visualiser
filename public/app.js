@@ -423,6 +423,18 @@ function processClip(){   // same recolour and edge mask as the still frames
   CLIP.proc=out; requestDraw();
 }
 let INTRO_C=null;
+function introStatus(){
+  if(S.introAnim===false) return ['off','Off.'];
+  if(!CLIP.proc) return ['wait', CLIP.name==='Could not read' ? 'This clip could not be read. Try an MP4 or WebM.' : 'Loading the clip…'];
+  if(S.subject!=='mascot') return ['off','Not playing: the subject is set to '+(S.subject==='image'?'Logo':'Title')+' (Subject section).'];
+  if(S.frameShape==='cutout') return ['off','Not playing: the frame is set to Cut-out, and the clip has the disc built in. Switch the frame to Circle or Rounded.'];
+  if(!A) return ['wait','Plays once a track is loaded.'];
+  const end=introEnd(); if(end<1) return ['off','Not playing: this track starts straight in side light, so there is no intro.'];
+  const beat=A.grid?A.grid.beat:60/128, P0=beat*4*(+S.clipBars||2), n=Math.max(1,Math.round(end/P0));
+  return ['on',`Playing: the first ${fmtTime(end)}, until the first change to side light (${n} sway${n>1?'s':''}).`];
+}
+function syncIntroNote(){ const el=$('introNote'); if(!el) return; const [k,txt]=introStatus(); el.textContent=txt; el.dataset.k=k; }
+setInterval(syncIntroNote, 1000);
 function introEnd(){ for(const c of CUES) if(c.p!==0) return c.t; return A ? A.dur : Infinity; }
 function introFrame(t){
   if(S.introAnim===false || !CLIP.proc || S.subject!=='mascot' || S.frameShape==='cutout') return null;

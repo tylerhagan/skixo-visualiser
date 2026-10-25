@@ -269,3 +269,4 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-s
 .ftile canvas{background:repeating-conic-gradient(#1b1f22 0 25%,#15181b 0 50%) 0 0/12px 12px}
 .clipbox{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:start;margin-top:8px}
 .clipbox>div:first-child{display:flex;flex-direction:column;gap:4px}
+.introstate[data-k="on"]{color:var(--kacc)} .introstate[data-k="off"]{color:var(--warn)}
