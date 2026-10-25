@@ -39,10 +39,9 @@ This serves `public/` without the password gate.
 
 ## Roadmap
 
-Done: release groups with shared looks, artwork per group and backup files; looks with artwork recolouring; background library (sets x palettes) plus animated scenes (time-of-day sky, halftone rays, record grooves, falling dashes) with per-scene opacity, blur and drift; section scenes; motion and glitch per section; glitch layer (tearing, colour split, block shifts, VHS roll, pixel sort, datamosh at changes, mirror world, floating echoes); captions with tap to time, word-by-word reveal, full styling and a Whisper draft (beta); Spotify Canvas loops; dual-format renders; still presets with headline type; font choice; editor layout with clickable timeline lanes; tactile controls (knobs with live rings for movement, nod and glitch, section pads, an LCD with bar and beat, a beat light and level meters), coloured by the look.
+Done: public case study at /case-study/; release groups with shared looks, artwork per group and backup files; looks with artwork recolouring; background library (sets x palettes) plus animated scenes (time-of-day sky, halftone rays, record grooves, falling dashes) with per-scene opacity, blur and drift; section scenes; motion and glitch per section; glitch layer (tearing, colour split, block shifts, VHS roll, pixel sort, datamosh at changes, mirror world, floating echoes); captions with tap to time, word-by-word reveal, full styling and a Whisper draft (beta); Spotify Canvas loops; dual-format renders; still presets with headline type; font choice; editor layout with clickable timeline lanes; tactile controls (knobs with live rings for movement, nod and glitch, section pads, an LCD with bar and beat, a beat light and level meters), coloured by the look.
 
 Ideas:
-- Public case study page at /case-study outside the password gate (for the portfolio concept card)
 - Per-group artwork export inside group backup files
 - Whisper word timings feeding the word-by-word reveal
 - MIDI control from a pad controller (Maschine Mikro): pads trigger sections and glitch bursts, the encoder sweeps the selected knob
