@@ -424,8 +424,22 @@ function drawFinish(ctx, img, x, y, w, h, t){
   if(f.st){ ctx.globalAlpha=1; ctx.drawImage(f.st, X, Y, WW, HH); }
   ctx.restore();
 }
-function lineArt(){ if(!IMGS.line) return null; if(LINE_C && LINE_C._ink===S.ink && LINE_C._src===IMGS.line) return LINE_C;
-  LINE_C=silhouette(IMGS.line, S.ink); LINE_C._ink=S.ink; LINE_C._src=IMGS.line; return LINE_C; }
+// line art: ink lines over a soft paper and accent wash inside the figure, so it reads as a print, not a hollow outline
+let LINE_MASK=null;
+function lineMask(img){
+  if(LINE_MASK && LINE_MASK._src===img) return LINE_MASK;
+  const W=img.width, H=img.height, c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(img,0,0);
+  const d=x.getImageData(0,0,W,H), a=d.data, out=new Uint8Array(W*H), st=[];
+  for(let i=0;i<W;i++) st.push(i,(H-1)*W+i); for(let j=0;j<H;j++) st.push(j*W,j*W+W-1);
+  while(st.length){ const p=st.pop(); if(out[p] || a[p*4+3]>40) continue; out[p]=1; const xx=p%W; if(xx>0) st.push(p-1); if(xx<W-1) st.push(p+1); if(p>=W) st.push(p-W); if(p<W*(H-1)) st.push(p+W); }
+  for(let p=0;p<W*H;p++){ a[p*4]=a[p*4+1]=a[p*4+2]=0; a[p*4+3]=out[p]?0:255; }   // everything the outside can't reach is the figure
+  x.putImageData(d,0,0); c._src=img; LINE_MASK=c; return c;
+}
+function lineArt(){ if(!IMGS.line) return null; const key=S.ink+S.paperCol+S.blue; if(LINE_C && LINE_C._k===key && LINE_C._src===IMGS.line) return LINE_C;
+  const m=lineMask(IMGS.line), c=document.createElement('canvas'); c.width=m.width; c.height=m.height; const x=c.getContext('2d');
+  const pr=hex2rgb(S.paperCol), ar=hex2rgb(S.blue); x.drawImage(m,0,0); x.globalCompositeOperation='source-in'; x.fillStyle=mixc(pr,ar,0.16); x.fillRect(0,0,c.width,c.height);
+  x.globalCompositeOperation='source-over'; x.drawImage(silhouette(IMGS.line, S.ink),0,0);
+  c._k=key; c._src=IMGS.line; LINE_C=c; return c; }
 function logoArt(){
   const L=IMGS.logo; if(!L) return IMGS.a;
   const key=[S.logoTint,S.frameShape,S.ink,S.blue,S.paperCol].join(); if(LOGO_C && LOGO_C._k===key && LOGO_C._src===L) return LOGO_C;
@@ -438,13 +452,18 @@ function logoArt(){
 // cut-out mascot: line art when quiet (optional), headphones go on at the peaks (optional)
 function cutFor(p){ if(p===0 && S.lineQuiet && IMGS.line) return 'line'; if(p===2 && S.phonesPeak && IMGS.cutn && IMGS.phones) return 'phones'; return 'cut'; }
 function cutImg(kind){ return kind==='line' ? lineArt() : kind==='phones' ? IMGS.cutn : IMGS.cut; }
-const PHONES_FIT = {x:0.5, y:0.215, w:0.9};   // headphones worn on the head of the starter cut-out (centre and width, as a share of the canvas)
+/* headphones worn on the head: the art's cups sit too close together for this head, so it is drawn in three pieces.
+   Source boxes are shares of the headphones image; targets are shares of the cut-out canvas (ears at about y 0.39, x 0.205 and 0.795). */
+const PHONES_FIT = { band:{src:[0.15,0,0.85,0.4], dst:[0.15,0.005,0.85,0.31]},
+  cupL:{src:[0.12,0.42,0.42,0.92], c:[0.205,0.39]}, cupR:{src:[0.58,0.42,0.88,0.92], c:[0.795,0.39]}, cupW:0.17 };
 function drawCut(ctx, kind, sz, t, alpha){
   const img=cutImg(kind); if(!img) return;
   ctx.save(); ctx.globalAlpha=alpha; ctx.drawImage(img,-sz/2,-sz/2,sz,sz);
-  if(kind==='phones'){ const P=IMGS.phones, kk=hitEnv(A&&A.kicks,t,0.18), w=sz*PHONES_FIT.w*(1+kk*0.035), h=w*P.height/P.width;
-    const x=-sz/2+sz*PHONES_FIT.x-w/2, y=-sz/2+sz*PHONES_FIT.y-h/2-kk*sz*0.008;
-    drawFinish(ctx,P,x,y,w,h,t); ctx.globalAlpha=alpha; ctx.drawImage(P,x,y,w,h); }
+  if(kind==='phones'){ const P=IMGS.phones, F=PHONES_FIT, kk=hitEnv(A&&A.kicks,t,0.18), pw=P.width, ph=P.height;
+    ctx.translate(0, -kk*sz*0.008); const g=1+kk*0.03, X=v=>(-0.5+v)*sz, Y=v=>(-0.5+v)*sz;
+    const piece=(src,dx0,dy0,dx1,dy1)=>ctx.drawImage(P, src[0]*pw, src[1]*ph, (src[2]-src[0])*pw, (src[3]-src[1])*ph, X(dx0), Y(dy0), (dx1-dx0)*sz, (dy1-dy0)*sz);
+    const b=F.band.dst, bw=(b[2]-b[0])*g, bc=(b[0]+b[2])/2; piece(F.band.src, bc-bw/2, b[1]-(g-1)*0.04, bc+bw/2, b[3]);
+    for(const cup of [F.cupL,F.cupR]){ const s=cup.src, cw=F.cupW*g, ch=cw*((s[3]-s[1])*ph)/((s[2]-s[0])*pw); piece(s, cup.c[0]-cw/2, cup.c[1]-ch/2, cup.c[0]+cw/2, cup.c[1]+ch/2); } }
   ctx.restore();
 }
 function drawSubjectText(ctx,W,H,U,cx,cy,size,scale,rot,t){
