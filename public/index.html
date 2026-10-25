@@ -119,6 +119,14 @@
       </div>
     </details>
     <details open data-tab="look">
+      <summary>Patches</summary>
+      <div class="grp">
+        <div class="patches" id="patches" role="group" aria-label="Patches"><button type="button" data-p="">Base<i></i></button><button type="button" data-p="A">A<i></i></button><button type="button" data-p="B">B<i></i></button><button type="button" data-p="C">C<i></i></button><button type="button" data-p="D">D<i></i></button></div>
+        <div class="btns"><button type="button" id="patchStore" aria-pressed="false" title="Then pick a pad to save the current look into it">Store</button><button type="button" id="shuffle" title="Roll a new look, scene, texture and glitch mix">Shuffle</button><button type="button" id="unshuffle" hidden>Undo shuffle</button></div>
+        <p class="hint" id="patchNote"></p>
+      </div>
+    </details>
+    <details open data-tab="look">
       <summary>Look</summary>
       <div class="grp">
         <div class="looks" id="looks"></div>
@@ -129,6 +137,22 @@
           <div class="inkchip"><input type="color" id="paperCol" aria-label="Paper colour"><span><b>Paper</b><input type="text" class="hex" data-for="paperCol" spellcheck="false" aria-label="Paper hex"></span><button type="button" class="drop" data-for="paperCol" aria-label="Pick paper colour from the screen" title="Pick from the screen" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M9.5 3.5l3 3M11 2a1.6 1.6 0 0 1 2.3 2.3L11.8 5.8 10.2 4.2zM10.6 5.4L4.5 11.5 3 13l-.5-.5L4 11l6.1-6.1"/></svg></button></div>
         </div>
         <div class="row wide matchrow"><label>Match colours</label><div class="seg"><button type="button" id="paperAuto" title="Set the paper from the artwork's own background">From artwork</button><button type="button" id="matchBg" title="Recolour the look from the current background scene">From the scene</button></div></div>
+      </div>
+    </details>
+    <details open data-tab="look">
+      <summary>Subject</summary>
+      <div class="grp">
+        <div class="row wide"><label for="subject">Subject</label><select id="subject" data-seg><option value="mascot">Mascot</option><option value="image">Logo</option><option value="text">Title</option></select></div>
+        <div class="row wide" id="frameRow"><label for="frameShape">Frame</label><select id="frameShape" data-seg><option value="circle">Circle</option><option value="rounded">Rounded</option><option value="cutout">Cut-out</option></select></div>
+        <div class="logorow" id="logoRow">
+          <button type="button" class="ftile" data-slot="logo" aria-label="Logo or image: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-logo">Empty</span></button><input type="file" id="f-logo" class="vh" accept="image/png,image/svg+xml,image/webp,image/jpeg" tabindex="-1" aria-hidden="true">
+          <div class="grp" style="padding:0;min-width:0"><p class="hint">A PNG with transparency or an SVG. Click or drop it on the tile.</p><div class="row wide"><label for="logoTint">Colour</label><select id="logoTint" data-seg><option value="original">Own</option><option value="ink">Ink</option><option value="accent">Accent</option><option value="paper">Paper</option></select></div></div>
+        </div>
+        <div id="g-finish" class="grp" style="padding:0"></div>
+        <div class="row wide" id="lineRow"><label for="lineQuiet">Line art when quiet</label><input type="checkbox" id="lineQuiet"></div>
+        <div class="row wide" id="phonesRow"><label for="phonesPeak">Headphones on at peaks</label><input type="checkbox" id="phonesPeak"></div>
+        <div class="row wide"><label for="echoLine">Echoes in line art</label><input type="checkbox" id="echoLine"></div>
+        <p class="hint" id="subjectNote"></p>
       </div>
     </details>
     <details open data-tab="look">
@@ -195,6 +219,12 @@
           <span class="fr">Flat</span><button type="button" class="ftile" data-slot="a" aria-label="Flat light: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-a">Empty</span></button><input type="file" id="f-a" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n1f" aria-label="Flat, slight nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n1f">Empty</span></button><input type="file" id="f-n1f" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n2f" aria-label="Flat, deep nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n2f">Empty</span></button><input type="file" id="f-n2f" class="vh" accept="image/*" tabindex="-1" aria-hidden="true">
           <span class="fr">Side</span><button type="button" class="ftile" data-slot="b" aria-label="Side light: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-b">Empty</span></button><input type="file" id="f-b" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n1c" aria-label="Side, slight nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n1c">Empty</span></button><input type="file" id="f-n1c" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n2c" aria-label="Side, deep nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n2c">Empty</span></button><input type="file" id="f-n2c" class="vh" accept="image/*" tabindex="-1" aria-hidden="true">
           <span class="fr">Peak</span><button type="button" class="ftile" data-slot="c" aria-label="Peak face: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-c">Empty</span></button><input type="file" id="f-c" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n1p" aria-label="Peak, slight nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n1p">Empty</span></button><input type="file" id="f-n1p" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"><button type="button" class="ftile" data-slot="n2p" aria-label="Peak, deep nod: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-n2p">Empty</span></button><input type="file" id="f-n2p" class="vh" accept="image/*" tabindex="-1" aria-hidden="true">
+        </div>
+        <div class="fcuts">
+          <div><span class="fh">Cut-out</span><button type="button" class="ftile" data-slot="cut" aria-label="Cut-out mascot: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-cut">Empty</span></button><input type="file" id="f-cut" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>
+          <div><span class="fh">No phones</span><button type="button" class="ftile" data-slot="cutn" aria-label="Cut-out without headphones: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-cutn">Empty</span></button><input type="file" id="f-cutn" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>
+          <div><span class="fh">Headphones</span><button type="button" class="ftile" data-slot="phones" aria-label="Headphones on their own: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-phones">Empty</span></button><input type="file" id="f-phones" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>
+          <div><span class="fh">Line art</span><button type="button" class="ftile" data-slot="line" aria-label="Line art: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-line">Empty</span></button><input type="file" id="f-line" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>
         </div>
         <div class="fextra">
           <div><span class="fh">In-between</span><button type="button" class="ftile" data-slot="h" aria-label="In-between frame: choose or drop a file"><canvas width="108" height="108"></canvas><span class="fbadge" id="note-h">Empty</span></button><input type="file" id="f-h" class="vh" accept="image/*" tabindex="-1" aria-hidden="true"></div>

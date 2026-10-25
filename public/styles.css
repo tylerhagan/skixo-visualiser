@@ -252,3 +252,18 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-s
 @media (prefers-reduced-motion:reduce){.recdeck.on .rec i,.tappad.hit,.tapbpm.hit{animation:none}}
 .recdeck.on .rec:disabled{opacity:1}
 #bgColourShow{align-self:flex-start;text-align:left;font-size:12px}
+/* patches */
+.patches{display:grid;grid-template-columns:1.3fr repeat(4,1fr);gap:6px}
+.patches button{position:relative;height:44px;border-radius:6px;background:var(--raise);border:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--muted);padding:0 0 6px;overflow:hidden}
+.patches button i{position:absolute;left:6px;right:6px;bottom:5px;height:5px;border-radius:2px;background:var(--line)}
+.patches button.empty{border-style:dashed;background:transparent}
+.patches button.empty i{background:none!important}
+.patches button[aria-pressed="true"]{color:var(--fg);border-color:var(--kacc);background:color-mix(in srgb,var(--kacc) 16%,var(--raise))}
+.patches button.arm{box-shadow:0 0 0 1px #d0654f;color:#d0654f}
+#patchStore[aria-pressed="true"]{background:#d0654f;border-color:#d0654f;color:#111}
+/* subject */
+.logorow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:start}
+.fcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
+.fcuts>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fcuts .fh{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftile canvas{background:repeating-conic-gradient(#1b1f22 0 25%,#15181b 0 50%) 0 0/12px 12px}

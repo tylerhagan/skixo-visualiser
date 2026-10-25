@@ -8,6 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
+  subject:'mascot', frameShape:'circle', fSticker:0, fShadow:0.35, fOffset:0, logoTint:'original', lineQuiet:false, phonesPeak:false, echoLine:false, patch:null,
   bgDrift:0.5, bgColour:'', glitch:0, gSort:0, gMosh:0, gMirror:0, echo:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capStyle:'outline', capColour:'ink', capWeight:'500', capCase:'typed', capAnim:'fade', capSpacing:0, capIn:0.25, capOut:0.3, capHold:6, capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
@@ -19,6 +20,7 @@ const SLIDERS = {
   'g-motion':[['breathe','Breathing',0,1,0.01],['kick','Kick pulse',0,1,0.01],['sway','Sway',0,1,0.01],['rings','Kick rings',0,1,0.01],
     ['spectrum','Spectrum ticks',0,1,0.01],['misprint','Misprint',0,1,0.01]],
   'g-nod':[['nod','Nod depth',0,1,0.01],['nodGate','Nod from energy',0,1,0.01]],
+  'g-finish':[['fSticker','Sticker edge',0,1,0.01],['fShadow','Shadow',0,1,0.01],['fOffset','Riso offset',0,1,0.01]],
   'g-typeS':[['textScale','Text size',0.5,2.5,0.05]],
   'g-caps':[['capSize','Size',0.5,2.5,0.05],['capSpacing','Letter spacing',-0.05,0.3,0.01],['capIn','Fade in (s)',0,1.5,0.05],['capOut','Fade out (s)',0,1.5,0.05],['capHold','Max hold (s)',1,15,0.5]],
   'g-glitch':[['glitch','Glitch amount',0,1,0.01],
@@ -32,7 +34,7 @@ try{ const saved = JSON.parse(localStorage.getItem('skixo-vis-settings')||'null'
 function persist(){ try{ localStorage.setItem('skixo-vis-settings', JSON.stringify(S)); }catch(e){} if(typeof saveLib==='function') saveLib(); }
 
 const $ = id => document.getElementById(id);
-const KNOB_GROUPS = ['g-motion','g-nod','g-glitch','g-atmos'];
+const KNOB_GROUPS = ['g-motion','g-nod','g-glitch','g-atmos','g-finish'];
 const KNOB_SMALL = ['dashSpeed','cloudSpeed'];   // speed knobs sit beside their amount   // amounts you play by feel become knobs
 function buildSliders(){
   for(const [gid, list] of Object.entries(SLIDERS)){
@@ -55,8 +57,8 @@ function syncUI(){
   if(typeof syncBgColour==='function') setTimeout(syncBgColour);
   if(typeof syncSeg==='function') setTimeout(syncSeg);
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim']) $(k).value = S[k];
-  $('useWordmark').checked = S.useWordmark; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint']) $(k).value = S[k];
+  $('useWordmark').checked = S.useWordmark; $('lineQuiet').checked=!!S.lineQuiet; $('phonesPeak').checked=!!S.phonesPeak; $('echoLine').checked=!!S.echoLine; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
 function bindUI(){
@@ -70,10 +72,10 @@ function bindUI(){
       $(k+'-o').textContent = fmtVal(v); onChange(k);
     });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
-  for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
+  for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist','lineQuiet','phonesPeak','echoLine']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
 }
 function onChange(k){
   if(k==='poseMode'){
@@ -84,7 +86,8 @@ function onChange(k){
   if(k==='captions' && A) drawTimeline();
   if(BGK[k] && A) drawTimeline();
   if(k==='font' || k==='fontCustom'){ $('fontCustomRow').hidden = S.font!=='custom'; ensureFont(); }
-  if(k==='edge' || (k==='paperCol' && (S.edge||'auto')==='auto')) refreshArt();
+  if(k==='edge' || k==='frameShape' || (k==='paperCol' && (S.edge||'auto')==='auto')) refreshArt();
+  if(['subject','frameShape'].includes(k) && typeof syncSubjectUI==='function') syncSubjectUI();
   if(k==='bpm' && A){ A.grid = beatGrid(); showGrid(); }
   if(k==='ink') wordmarkImg = null, loadWordmark();
   if(['ink','blue','paperCol'].includes(k)){ S.look='custom'; markLook(); }
@@ -95,7 +98,8 @@ function onChange(k){
 }
 
 /* ---------------- assets ---------------- */
-const IMGS = { a:null, b:null, c:null, h:null, w:null, n1c:null, n2c:null, n1f:null, n2f:null, n1p:null, n2p:null };
+const IMGS = { a:null, b:null, c:null, h:null, w:null, n1c:null, n2c:null, n1f:null, n2f:null, n1p:null, n2p:null, cut:null, cutn:null, phones:null, line:null, logo:null };
+const CUT_SLOTS = ['cut','cutn','phones','line','logo'];   // transparent art: kept whole, never cropped to the disc
 const NOD_SLOTS = ['n1c','n2c','n1f','n2f','n1p','n2p'], RAW = {};   // masked canvases for poses, raw bitmap for wide scene
 let wordmarkSrc = null, wordmarkImg = null;
 /* file slots: hide the native input, show a button and what's loaded */
@@ -315,6 +319,8 @@ function edgeRadii(){ let m=S.edge||'auto'; if(m==='auto') m = isDark(S.paperCol
 function refreshArt(){
   overlayCache={}; makeClouds(S.blue); wordmarkImg=null; loadWordmark();
   for(const k of ['a','b','c','h']) if(IMGS[k]) IMGS[k]=maskPose(IMGS[k]._src);
+  for(const k of ['cut','cutn','phones']) if(IMGS[k] && IMGS[k]._src){ const src=IMGS[k]._src; IMGS[k]=tintWhole(src); IMGS[k]._src=src; }
+  FIN = new WeakMap(); LOGO_C=null; LINE_C=null;
   NOD_SLOTS.forEach(buildNod); markLook(); requestDraw();
 }
 
@@ -324,20 +330,32 @@ function maskPose(bmp){
   const x = c.getContext('2d');
   x.drawImage(tintCanvas(bmp), (n-bmp.width)/2, (n-bmp.height)/2);
   x.globalCompositeOperation = 'destination-in';
-  const [r0,r1] = edgeRadii();
-  const g = x.createRadialGradient(n/2,n/2,n*r0,n/2,n/2,n*r1);
-  g.addColorStop(0,'rgba(0,0,0,1)'); g.addColorStop(1,'rgba(0,0,0,0)');
-  x.fillStyle = g; x.fillRect(0,0,n,n);
+  if(S.frameShape==='rounded'){   // a rounded print card instead of the disc
+    x.filter=`blur(${n*0.004}px)`; x.fillStyle='#000'; x.beginPath(); x.roundRect(n*0.045,n*0.045,n*0.91,n*0.91,n*0.12); x.fill(); x.filter='none';
+  } else {
+    const [r0,r1] = edgeRadii();
+    const g = x.createRadialGradient(n/2,n/2,n*r0,n/2,n/2,n*r1);
+    g.addColorStop(0,'rgba(0,0,0,1)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle = g; x.fillRect(0,0,n,n);
+  }
   c._src = bmp; return c;
 }
 async function loadImage(src){
   const blob = src instanceof Blob ? src : await (await fetch(src)).blob();
+  if(/svg/.test(blob.type) || (blob.name && /\.svg$/i.test(blob.name))){   // SVG: rasterise large so it stays crisp at 1440p
+    const url=URL.createObjectURL(blob.type?blob:new Blob([blob],{type:'image/svg+xml'}));
+    try{ const im=new Image(); im.src=url; await im.decode(); const w=im.naturalWidth||1000, h=im.naturalHeight||1000, k=2048/Math.max(w,h);
+      const c=document.createElement('canvas'); c.width=Math.round(w*k); c.height=Math.round(h*k); c.getContext('2d').drawImage(im,0,0,c.width,c.height); return await createImageBitmap(c); }
+    finally{ URL.revokeObjectURL(url); }
+  }
   return await createImageBitmap(blob);
 }
 async function setPose(slot, src, name){
   const bmp = await loadImage(src); if(typeof drawTile==='function') drawTile(slot,bmp);
   setNote(slot, name || (typeof src==='string' ? 'Starter' : (src.name || 'Your file')));
   if(slot==='w' || slot==='bg') IMGS[slot] = bmp;
+  else if(CUT_SLOTS.includes(slot)){ let src=bmp; if(slot==='logo'){ const k=await knockOut(bmp); if(k){ src=k; setNote(slot,'Background removed'); drawTile(slot,k); } }
+    IMGS[slot] = (slot==='line'||slot==='logo') ? src : tintWhole(src); IMGS[slot]._src = src; FIN = new WeakMap(); }
   else if(NOD_SLOTS.includes(slot)){ RAW[slot] = bmp; buildNod(slot); }
   else { IMGS[slot] = maskPose(bmp); if(slot==='a'||slot==='b'||slot==='c') NOD_SLOTS.forEach(buildNod); if(slot==='c'||slot==='h') rebuildCues(); }
   requestDraw();
@@ -364,6 +382,88 @@ function alignOffset(baseImg, img){
       const yy=y-dy, xx=x-dx; e+=Math.abs(A1[y*n+x]-B1[yy*n+xx]); }
     if(e<bestE){ bestE=e; best=[dx/n,dy/n]; } }
   return best;
+}
+/* ---------------- subject art: cut-outs, logo plates, line art and print finishes ---------------- */
+// a logo saved without transparency: if the corners share one plain colour, flood it away from the edges (inner whites stay)
+async function knockOut(bmp){
+  const n=Math.min(1,1600/Math.max(bmp.width,bmp.height)), W=Math.round(bmp.width*n), H=Math.round(bmp.height*n);
+  const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(bmp,0,0,W,H);
+  const id=x.getImageData(0,0,W,H), d=id.data, px=(i)=>[d[i],d[i+1],d[i+2],d[i+3]];
+  const cs=[0,(W-1)*4,(H-1)*W*4,((H-1)*W+W-1)*4].map(px);
+  if(cs.some(q=>q[3]<250)) return null;   // already transparent
+  const ref=cs[0]; if(cs.some(q=>Math.abs(q[0]-ref[0])+Math.abs(q[1]-ref[1])+Math.abs(q[2]-ref[2])>36)) return null;
+  const dist=i=>Math.abs(d[i]-ref[0])+Math.abs(d[i+1]-ref[1])+Math.abs(d[i+2]-ref[2]);
+  const seen=new Uint8Array(W*H), st=[]; for(let i=0;i<W;i++){ st.push(i, (H-1)*W+i); } for(let j=0;j<H;j++){ st.push(j*W, j*W+W-1); }
+  while(st.length){ const p=st.pop(); if(seen[p]) continue; seen[p]=1; const dd=dist(p*4); if(dd>60) continue;
+    d[p*4+3] = dd<24 ? 0 : Math.round(255*(dd-24)/36); if(dd>=24) continue;
+    const xx=p%W; if(xx>0) st.push(p-1); if(xx<W-1) st.push(p+1); if(p>=W) st.push(p-W); if(p<W*(H-1)) st.push(p+W); }
+  x.putImageData(id,0,0); return await createImageBitmap(c);
+}
+let FIN = new WeakMap(), LOGO_C = null, LINE_C = null;
+const tintWhole = b => tintCanvas(b);
+function silhouette(img, colour, pad=0){ const c=document.createElement('canvas'); c.width=img.width+pad*2; c.height=img.height+pad*2; const x=c.getContext('2d');
+  x.drawImage(img,pad,pad); x.globalCompositeOperation='source-in'; x.fillStyle=colour; x.fillRect(0,0,c.width,c.height); return c; }
+function finishFor(img){   // cached once per image and settings: sticker edge, pre-blurred shadow, accent copy for the riso offset
+  const key=[S.paperCol,S.blue,Math.round((S.fSticker||0)*20)].join();
+  let f=FIN.get(img); if(f && f.key===key) return f;
+  const pad=Math.round(img.width*0.06), sh=silhouette(img,'#000',pad), W=sh.width, H=sh.height;
+  let st=null;
+  if(S.fSticker>0){ const r=img.width*0.03*S.fSticker; st=document.createElement('canvas'); st.width=W; st.height=H; const x=st.getContext('2d');
+    for(let i=0;i<24;i++){ const a=i/24*Math.PI*2; x.drawImage(sh,Math.cos(a)*r,Math.sin(a)*r); }
+    x.drawImage(sh,0,0); x.globalCompositeOperation='source-in'; x.fillStyle=S.paperCol; x.fillRect(0,0,W,H); }
+  const shadow=document.createElement('canvas'); shadow.width=W; shadow.height=H; const sx=shadow.getContext('2d'); sx.filter=`blur(${img.width*0.016}px)`; sx.drawImage(st||sh,0,0);
+  const acc=silhouette(st||sh, S.blue);
+  f={key,pad,st,shadow,acc}; FIN.set(img,f); return f;
+}
+function drawFinish(ctx, img, x, y, w, h, t){
+  if(!img || !(S.fShadow>0 || S.fOffset>0 || S.fSticker>0)) return;
+  const f=finishFor(img), px=f.pad*w/img.width, py=f.pad*h/img.height, X=x-px, Y=y-py, WW=w+px*2, HH=h+py*2;
+  ctx.save();
+  if(S.fShadow>0){ ctx.globalAlpha=0.32*S.fShadow; ctx.drawImage(f.shadow, X+w*0.008, Y+w*0.016, WW, HH); }
+  if(S.fOffset>0){ const d=w*0.012*S.fOffset*(1+hitEnv(A&&A.kicks,t,0.2)*1.2); ctx.globalAlpha=0.9; ctx.globalCompositeOperation='multiply'; ctx.drawImage(f.acc, X+d, Y+d*0.6, WW, HH); ctx.globalCompositeOperation='source-over'; }
+  if(f.st){ ctx.globalAlpha=1; ctx.drawImage(f.st, X, Y, WW, HH); }
+  ctx.restore();
+}
+function lineArt(){ if(!IMGS.line) return null; if(LINE_C && LINE_C._ink===S.ink && LINE_C._src===IMGS.line) return LINE_C;
+  LINE_C=silhouette(IMGS.line, S.ink); LINE_C._ink=S.ink; LINE_C._src=IMGS.line; return LINE_C; }
+function logoArt(){
+  const L=IMGS.logo; if(!L) return IMGS.a;
+  const key=[S.logoTint,S.frameShape,S.ink,S.blue,S.paperCol].join(); if(LOGO_C && LOGO_C._k===key && LOGO_C._src===L) return LOGO_C;
+  const n=1100, c=document.createElement('canvas'); c.width=c.height=n; const x=c.getContext('2d'), plate=S.frameShape!=='cutout';
+  if(plate){ x.fillStyle = S.logoTint==='accent' ? S.ink : S.blue; x.beginPath(); if(S.frameShape==='rounded') x.roundRect(n*0.045,n*0.045,n*0.91,n*0.91,n*0.12); else x.arc(n/2,n/2,n*0.47,0,Math.PI*2); x.fill(); }
+  const box = plate ? n*0.58 : n, k=box/Math.max(L.width,L.height), w=L.width*k, h=L.height*k;
+  const src = S.logoTint==='original' ? L : silhouette(L, {ink:S.ink,accent:S.blue,paper:S.paperCol}[S.logoTint]||S.ink);
+  x.drawImage(src,(n-w)/2,(n-h)/2,w,h); c._k=key; c._src=L; LOGO_C=c; return c;
+}
+// cut-out mascot: line art when quiet (optional), headphones go on at the peaks (optional)
+function cutFor(p){ if(p===0 && S.lineQuiet && IMGS.line) return 'line'; if(p===2 && S.phonesPeak && IMGS.cutn && IMGS.phones) return 'phones'; return 'cut'; }
+function cutImg(kind){ return kind==='line' ? lineArt() : kind==='phones' ? IMGS.cutn : IMGS.cut; }
+const PHONES_FIT = {x:0.5, y:0.215, w:0.9};   // headphones worn on the head of the starter cut-out (centre and width, as a share of the canvas)
+function drawCut(ctx, kind, sz, t, alpha){
+  const img=cutImg(kind); if(!img) return;
+  ctx.save(); ctx.globalAlpha=alpha; ctx.drawImage(img,-sz/2,-sz/2,sz,sz);
+  if(kind==='phones'){ const P=IMGS.phones, kk=hitEnv(A&&A.kicks,t,0.18), w=sz*PHONES_FIT.w*(1+kk*0.035), h=w*P.height/P.width;
+    const x=-sz/2+sz*PHONES_FIT.x-w/2, y=-sz/2+sz*PHONES_FIT.y-h/2-kk*sz*0.008;
+    drawFinish(ctx,P,x,y,w,h,t); ctx.globalAlpha=alpha; ctx.drawImage(P,x,y,w,h); }
+  ctx.restore();
+}
+function drawSubjectText(ctx,W,H,U,cx,cy,size,scale,rot,t){
+  const lc = s => S.lowercase ? s.toLowerCase().replace(/skixo/g,'skixO') : s;
+  const title = lc(S.title||''); if(!title) return;
+  const words=title.split(/\s+/), lines=[]; let cur='';
+  for(const w of words){ if(cur && (cur+' '+w).length>12){ lines.push(cur); cur=w; } else cur = cur ? cur+' '+w : w; } if(cur) lines.push(cur);
+  let fs = size*0.2*(S.textScale||1); ctx.font=`600 ${fs}px ${FONT()}`;
+  const widest=Math.max(...lines.map(l=>ctx.measureText(l).width)); if(widest>W*0.86) fs*=W*0.86/widest;
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot); ctx.scale(scale,scale);
+  ctx.font=`600 ${fs}px ${FONT()}`; ctx.letterSpacing=`${fs*-0.02}px`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const lh=fs*1.02, y0=-(lines.length-1)*lh/2 - fs*0.12;
+  const pass=(fn)=>lines.forEach((l,i)=>fn(l,0,y0+i*lh));
+  if(S.fShadow>0){ ctx.save(); ctx.shadowColor=`rgba(40,28,16,${0.35*S.fShadow})`; ctx.shadowBlur=fs*0.12; ctx.shadowOffsetY=fs*0.04; ctx.fillStyle=S.ink; pass((l,x,y)=>ctx.fillText(l,x,y)); ctx.restore(); }
+  if(S.fSticker>0){ ctx.lineJoin='round'; ctx.lineWidth=fs*0.16*S.fSticker; ctx.strokeStyle=S.paperCol; pass((l,x,y)=>ctx.strokeText(l,x,y)); }
+  if(S.fOffset>0){ const d=fs*0.04*S.fOffset*(1+hitEnv(A&&A.kicks,t,0.2)*1.2); ctx.save(); ctx.globalCompositeOperation='multiply'; ctx.fillStyle=S.blue; pass((l,x,y)=>ctx.fillText(l,x+d,y+d*0.6)); ctx.restore(); }
+  ctx.fillStyle=S.ink; pass((l,x,y)=>ctx.fillText(l,x,y));
+  if(S.showArtist!==false && S.artist){ const as=fs*0.2; ctx.font=`500 ${as}px ${FONT()}`; ctx.letterSpacing=`${as*0.14}px`; ctx.fillStyle=S.blue; ctx.fillText(S.artist, 0, y0+(lines.length-1)*lh+fs*0.62+as); }
+  ctx.restore(); ctx.letterSpacing='0px';
 }
 function buildNod(slot){
   const raw = RAW[slot]; if(!raw) return;
@@ -759,39 +859,55 @@ function frameInner(ctx, W, H, t){
     }
     drawRings(ctx,cx,cy,discR,U,t);
     drawSpectrum(ctx,cx,cy,size*0.5*scale+U*0.012,U,t);
-    // portrait
-    const ps = poseState(t), imgs=[IMGS.a,IMGS.b,IMGS.c,IMGS.h||IMGS.b];
-    let base = imgs[ps.from]||IMGS.a, top = imgs[ps.to]||IMGS.a;
-    if(ps.mix>=1){ const nf = nodFrame(t, ps.to); if(nf){ base = nf; top = nf; } }
-    if(S.echo>0.01 && top){   // floating echoes of the mascot, drifting outwards and fading
-      const n=Math.round(3+S.echo*7), kk=hitEnv(A&&A.kicks,t,0.25);
-      for(let i=0;i<n;i++){
-        const life=9, ph=((t/life + hash(i*17+3)) % 1), ang=hash(i*29+5)*Math.PI*2 + t*0.05*(hash(i)-0.5);
-        const dist=size*(0.45+ph*0.9), es=size*(0.16+hash(i*7)*0.16)*(1+kk*0.1);
-        ctx.globalAlpha=S.echo*0.55*Math.sin(ph*Math.PI);
-        ctx.drawImage(top, cx+Math.cos(ang)*dist*(W>H?1.4:0.8)-es/2, cy+Math.sin(ang)*dist*0.8-es/2, es, es);
+    // subject: mascot frames, a cut-out, a logo or the title itself
+    const ps = poseState(t), sub = S.subject||'mascot', cutout = S.frameShape==='cutout';
+    if(sub==='text'){ drawSubjectText(ctx,W,H,U,cx,cy,size,scale,rot,t); }
+    else {
+      let base, top, mix = ps.mix, cutKinds = null;
+      if(sub==='image'){ base = top = logoArt(); mix = 1; }
+      else if(cutout && IMGS.cut){ cutKinds = [cutFor(ps.from), cutFor(ps.to)];
+        if(cutKinds[0]!==cutKinds[1]){ cutKinds = mix<0.5 ? [cutKinds[0],cutKinds[0]] : [cutKinds[1],cutKinds[1]]; mix = 1; }   // different drawings cut cleanly, never ghost
+        base = cutImg(cutKinds[0]); top = cutImg(cutKinds[1]); }
+      else {
+        const imgs=[IMGS.a,IMGS.b,IMGS.c,IMGS.h||IMGS.b];
+        base = imgs[ps.from]||IMGS.a; top = imgs[ps.to]||IMGS.a;
+        if(ps.mix>=1){ const nf = nodFrame(t, ps.to); if(nf){ base = nf; top = nf; } }
       }
-      ctx.globalAlpha=1;
-    }
-    ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot); ctx.scale(scale,scale);
-    if(base){
-      // soft shadow on the paper
-      ctx.save(); ctx.globalAlpha=0.10; ctx.fillStyle='#3a2a18'; ctx.filter=`blur(${U*0.012}px)`; ctx.beginPath(); ctx.arc(U*0.004,U*0.008,size*0.47,0,Math.PI*2); ctx.fill(); ctx.restore();
-      ctx.drawImage(base, -size/2,-size/2,size,size);
-      if(top!==base && ps.mix>0){ ctx.globalAlpha=ps.mix; ctx.drawImage(top,-size/2,-size/2,size,size); ctx.globalAlpha=1; }
-      // misprint: offset ghost on hats
-      const mp = hat*S.misprint;
-      if(mp>0.03){
-        ctx.globalCompositeOperation='multiply'; ctx.globalAlpha=Math.min(0.45, mp*0.7);
-        const dx = U*0.007*mp*(hash(Math.floor(t*24))>0.5?1:-1);
-        ctx.drawImage(ps.mix>0.5?top:base, -size/2+dx, -size/2 - dx*0.3, size, size);
-        ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1;
+      const echoImg = (S.echoLine && lineArt()) || top;
+      if(S.echo>0.01 && echoImg){   // floating echoes of the subject, drifting outwards and fading
+        const n=Math.round(3+S.echo*7), kk=hitEnv(A&&A.kicks,t,0.25);
+        for(let i=0;i<n;i++){
+          const life=9, ph=((t/life + hash(i*17+3)) % 1), ang=hash(i*29+5)*Math.PI*2 + t*0.05*(hash(i)-0.5);
+          const dist=size*(0.45+ph*0.9), es=size*(0.16+hash(i*7)*0.16)*(1+kk*0.1);
+          ctx.globalAlpha=S.echo*0.55*Math.sin(ph*Math.PI);
+          ctx.drawImage(echoImg, cx+Math.cos(ang)*dist*(W>H?1.4:0.8)-es/2, cy+Math.sin(ang)*dist*0.8-es/2, es, es);
+        }
+        ctx.globalAlpha=1;
       }
+      // a cut-out has no nod frames, so the whole figure dips gently on the beat instead
+      let dip = 0;
+      if(cutout && sub==='mascot' && A && A.grid && S.nod>0 && energyAt(t)>=S.nodGate){ const P=A.grid.beat*(+S.nodEvery||1), ph=(((t-A.grid.phase+0.12*P)%P)+P)%P; dip = (ph<0.45*P ? Math.sin(Math.PI*ph/(0.45*P)) : 0)*S.nod*size*0.012; }
+      ctx.save(); ctx.translate(cx,cy+dip); ctx.rotate(rot); ctx.scale(scale,scale);
+      if(base){
+        const sz = cutout||sub==='image' ? size*0.96 : size;
+        drawFinish(ctx, mix>0.5?top:base, -sz/2,-sz/2,sz,sz, t);
+        if(cutKinds) drawCut(ctx, cutKinds[0], sz, t, 1); else ctx.drawImage(base, -sz/2,-sz/2,sz,sz);
+        if(top!==base && mix>0){ if(cutKinds) drawCut(ctx, cutKinds[1], sz, t, mix); else { ctx.globalAlpha=mix; ctx.drawImage(top,-sz/2,-sz/2,sz,sz); ctx.globalAlpha=1; } }
+        else if(cutKinds && cutKinds[1]!==cutKinds[0] && mix>=1) drawCut(ctx, cutKinds[1], sz, t, 1);
+        // misprint: offset ghost on hats
+        const mp = hat*S.misprint;
+        if(mp>0.03){
+          ctx.globalCompositeOperation='multiply'; ctx.globalAlpha=Math.min(0.45, mp*0.7);
+          const dx = U*0.007*mp*(hash(Math.floor(t*24))>0.5?1:-1);
+          ctx.drawImage(mix>0.5?top:base, -sz/2+dx, -sz/2 - dx*0.3, sz, sz);
+          ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1;
+        }
+      }
+      ctx.restore();
     }
-    ctx.restore();
   }
 
-  drawText(ctx,W,H,U,tall,t);
+  if(S.subject!=='text')   drawText(ctx,W,H,U,tall,t);
   if(!RENDER_STILL) drawCaption(ctx,W,H,U,t);
   if(S.glitch>0 || S.gMosh>0) glitchFX(ctx,W,H,U,t);
 
@@ -1218,13 +1334,13 @@ async function takeFile(file, slot){
     if(file.type.startsWith('audio') || /\.(wav|mp3|flac|ogg|m4a|aiff?)$/i.test(file.name)){ await loadAudio(file); store.put('audio-'+(LIB?LIB.current:'x'), file, file.name); $('trackName').textContent = file.name; setNote('audio', file.name); return; }
     if(file.type.startsWith('image')){
       const nm = file.name.match(/nod[-_ ]?(side|flat|peak)[-_ ]?([12])/i);
-      const s = slot || (nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /^(bg|scene|background)/i.test(file.name) ? 'bg' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
+      const s = slot || (/line[-_ ]?art/i.test(file.name) ? 'line' : /no[-_ ]?head|no[-_ ]?phones/i.test(file.name) ? 'cutn' : /^head ?phones/i.test(file.name) ? 'phones' : /transparent|cut[-_ ]?out/i.test(file.name) ? 'cut' : /logo|emblem|\.svg$/i.test(file.name) ? 'logo' : nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /^(bg|scene|background)/i.test(file.name) ? 'bg' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
       await setPose(s, file); store.put(artKey(s), file, file.name); if(s==='bg'){ S.bgId=''; markBg(); persist(); } if(s==='h') rebuildCues(); setStatus(`Loaded ${file.name}`);
     }
   }catch(err){ setStatus(`Couldn't read ${file.name}. Try a WAV, MP3, PNG or JPG.`, true); }
 }
 $('f-audio').addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0]));
-for(const s of ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
+for(const s of ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
 const app = $('app');
 app.addEventListener('dragover', e=>{ e.preventDefault(); app.classList.add('drop'); });
 app.addEventListener('dragleave', e=>{ if(e.target===app) app.classList.remove('drop'); });
@@ -1377,7 +1493,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
-const SHARED_KEYS = ['look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
+const SHARED_KEYS = ['subject','frameShape','fSticker','fShadow','fOffset','logoTint','lineQuiet','phonesPeak','echoLine','look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
   'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
@@ -1385,7 +1501,9 @@ const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
 const rel = ()=> LIB.releases.find(r=>r.id===LIB.current);
 function splitS(){ const sh={}, own={}; for(const k in S) (SHARED_KEYS.includes(k)?sh:own)[k]=S[k]; return {sh,own}; }
 function saveLib(){
-  if(!LIB) return; const {sh,own}=splitS(); grp().shared=sh; rel().own=own;
+  if(!LIB) return; const {sh,own}=splitS(); const g=grp();
+  if(S.patch && g.patches && g.patches[S.patch]) g.patches[S.patch]=sh; else g.shared=sh;   // edits go to the patch in use
+  rel().own=own;
   clearTimeout(libTimer); libTimer=setTimeout(()=>store.put('library', JSON.stringify(LIB), 'library'), 300);
 }
 function fillPickers(){
@@ -1397,7 +1515,9 @@ function fillPickers(){
 const esc = t => String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function openRelease(id){
   saveLib(); stop(); LIB.current = id;
-  S = Object.assign({}, DEFAULTS, grp().shared, rel().own);
+  const pp = rel().own && rel().own.patch, pg = grp().patches||{};
+  S = Object.assign({}, DEFAULTS, grp().shared, (pp && pg[pp]) || {}, rel().own); if(pp && !pg[pp]) S.patch=null;
+  if(typeof markPatches==='function') markPatches();
   if(grp().id!==artGroup) await loadArtwork();
   syncUI(); setAspect(); refreshArt(); fillPickers(); persist(); if($('mslot')) showMotionSec(); if(S.bgId) pickBg(S.bgId,false); if(BGLIB.length) loadSecBgs();
   const a = await store.get('audio-'+id);
@@ -1422,7 +1542,7 @@ async function loadLibrary(){
     LIB = {groups:[g], releases:[r], current:r.id};
     const old = await store.get('audio'); if(old && old.blob) await store.put('audio-'+r.id, old.blob, old.name);
   }
-  S = Object.assign({}, DEFAULTS, grp().shared, rel().own); syncUI(); setAspect(); fillPickers();
+  { const pp=rel().own&&rel().own.patch, pg=grp().patches||{}; S = Object.assign({}, DEFAULTS, grp().shared, (pp&&pg[pp])||{}, rel().own); if(pp&&!pg[pp]) S.patch=null; } syncUI(); setAspect(); fillPickers(); if(typeof markPatches==='function') setTimeout(markPatches);
 }
 
 /* ---------------- segmented controls: selects marked data-seg become button groups (the select stays the source of truth) ---------------- */
@@ -1505,7 +1625,8 @@ function kEnv(k,t,st){   // 0..1: how much of this setting is landing at time t
     case 'gMirror': { if(!A.grid) return 0; const ph=(((t-A.grid.phase)%A.grid.beat)+A.grid.beat)%A.grid.beat; return Math.exp(-ph*4/A.grid.beat); }
     case 'gMosh': { let g=0; for(const c of CUES){ const a=t-c.t; if(a>=0&&a<0.8) g=Math.max(g,1-a/0.8); } return g; }
     case 'dashes': return 0.35+0.65*hat(0.12);
-    case 'dashSpeed': case 'clouds': case 'cloudSpeed': case 'light': case 'grain': case 'vignette': return 1;
+    case 'fOffset': return 0.35+0.65*kick(0.2);
+    case 'fSticker': case 'fShadow': case 'dashSpeed': case 'clouds': case 'cloudSpeed': case 'light': case 'grain': case 'vignette': return 1;
     default: return Math.min(1, glitchLevel(t)/Math.max(0.05,S.glitch));
   }
 }
@@ -1650,8 +1771,9 @@ $('importFile').addEventListener('change', async e=>{
 /* ---------------- artwork per release group ----------------
    Mascot frames you drop in are saved for the current group; groups without their own use the starter set. */
 const STARTER = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/peak-face.jpg', w:'assets/wallpaper.jpg',
+  cut:'assets/cut.webp', cutn:'assets/cut-nophones.webp', phones:'assets/phones.webp', line:'assets/line.webp',
   n1f:'assets/nod-flat-1.jpg', n2f:'assets/nod-flat-2.jpg', n1c:'assets/nod-side-1.jpg', n2c:'assets/nod-side-2.jpg', n1p:'assets/nod-peak-1.jpg', n2p:'assets/nod-peak-2.jpg' };
-const ART_SLOTS = ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p'];
+const ART_SLOTS = ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo'];
 const artKey = s => s==='bg' ? 'img-bg' : `img-${LIB ? grp().id : 'x'}-${s}`;
 let artGroup = null;
 async function loadArtwork(){
@@ -1720,7 +1842,7 @@ const fontSampleText=()=>{ const t=S.title||'glad you came'; return S.lowercase 
 })();
 // mascot frame grid: thumbnails, click to choose, drop onto a frame
 function drawTile(slot,bmp){ const c=document.querySelector(`.ftile[data-slot="${slot}"] canvas`); if(!c) return; const x=c.getContext('2d'); x.clearRect(0,0,c.width,c.height); if(!bmp) return;
-  const sc=Math.max(c.width/bmp.width, c.height/bmp.height), w=bmp.width*sc, h=bmp.height*sc; x.drawImage(bmp,(c.width-w)/2,(c.height-h)/2,w,h); }
+  const sc=(CUT_SLOTS.includes(slot)?Math.min:Math.max)(c.width/bmp.width, c.height/bmp.height)*(CUT_SLOTS.includes(slot)?0.92:1), w=bmp.width*sc, h=bmp.height*sc; x.drawImage(bmp,(c.width-w)/2,(c.height-h)/2,w,h); }
 document.querySelectorAll('.ftile').forEach(t=>{ const slot=t.dataset.slot;
   t.addEventListener('click',()=>$('f-'+slot).click());
   t.addEventListener('dragover',e=>{ e.preventDefault(); e.stopPropagation(); t.classList.add('over'); });
@@ -1760,3 +1882,61 @@ function syncLookUI(){
 }
 for(const k of ['title','lowercase','fontCustom']) $(k).addEventListener(k==='lowercase'?'change':'input', ()=>syncLookUI());
 window.LOOKUI_READY=true; syncLookUI(); recProgress(null);
+
+/* ---------------- subject panel ---------------- */
+function syncSubjectUI(){
+  const sub=S.subject||'mascot', cut=S.frameShape==='cutout';
+  $('frameRow').hidden = sub==='text'; $('logoRow').hidden = sub!=='image';
+  $('lineRow').hidden = $('phonesRow').hidden = !(sub==='mascot' && cut);
+  const notes = { mascot: cut ? 'The cut-out uses your transparent mascot files. It has no nod frames, so the whole figure dips on the beat instead.' : 'Your mascot frames, cropped to the frame shape.',
+    image: 'Any PNG or SVG. All the motion, scenes and glitch still apply. Circle and Rounded put it on an accent plate; Cut-out keeps its own shape.',
+    text: 'The title becomes the subject, set in your font. The label is hidden, since the title is already the centrepiece.' };
+  $('subjectNote').textContent = notes[sub];
+}
+syncSubjectUI();
+/* ---------------- patches: up to four variations per group, each release picks one ---------------- */
+const PATCHES=['A','B','C','D'];
+function sharedSnap(){ return JSON.parse(JSON.stringify(splitS().sh)); }
+function markPatches(){
+  if(!LIB) return; const g=grp(), pg=g.patches||{}, store=$('patchStore').getAttribute('aria-pressed')==='true';
+  document.querySelectorAll('#patches button').forEach(b=>{ const p=b.dataset.p, d = p ? pg[p] : g.shared, filled=!!d;
+    b.setAttribute('aria-pressed', (S.patch||'')===p); b.classList.toggle('empty', !filled); b.classList.toggle('arm', store && p!=='');
+    const i=b.querySelector('i'); i.style.background = d ? `linear-gradient(90deg, ${d.paperCol||S.paperCol} 0 34%, ${d.blue||S.blue} 34% 67%, ${d.ink||S.ink} 67%)` : '';
+    b.title = p ? (filled ? `Patch ${p}${store?': click to overwrite with the current look':''}` : `Empty: click to save the current look as patch ${p}`) : 'The group\'s main look'; });
+  const used = LIB.releases.filter(r=>r.groupId===g.id && r.own && r.own.patch).length;
+  $('patchNote').textContent = store ? 'Pick a pad to save the current look into it.' : S.patch ? `This release uses patch ${S.patch}. Changes to the look now save into ${S.patch}, so other releases on ${S.patch} follow.` : `Patches are variations of this group's look. Each release can use one${used?`; ${used} release${used>1?'s':''} here already do`:''}.`;
+}
+function applySnap(snap){
+  Object.assign(S, JSON.parse(JSON.stringify(snap)));
+  syncUI(); refreshArt(); if(S.bgId) pickBg(S.bgId,false); if(BGLIB.length) loadSecBgs(); showMotionSec(); syncSubjectUI(); persist(); requestDraw();
+}
+function usePatch(p){
+  saveLib(); const g=grp(); S.patch = p || null;
+  applySnap(Object.assign({}, DEFAULTS_SHARED(), g.shared, p ? g.patches[p] : {})); markPatches();
+  setStatus(p ? `Patch ${p}` : 'Main look');
+}
+function DEFAULTS_SHARED(){ const o={}; for(const k of SHARED_KEYS) if(k in DEFAULTS) o[k]=DEFAULTS[k]; return o; }
+function storePatch(p){ const g=grp(); g.patches=g.patches||{}; g.patches[p]=sharedSnap(); S.patch=p; $('patchStore').setAttribute('aria-pressed','false'); saveLib(); persist(); markPatches(); setStatus(`Saved the current look as patch ${p}`); }
+document.querySelectorAll('#patches button').forEach(b=>b.addEventListener('click',()=>{
+  const p=b.dataset.p, pg=grp().patches||{}, store=$('patchStore').getAttribute('aria-pressed')==='true';
+  if(p && (store || !pg[p])) storePatch(p); else usePatch(p);
+}));
+$('patchStore').addEventListener('click',()=>{ const b=$('patchStore'); b.setAttribute('aria-pressed', b.getAttribute('aria-pressed')!=='true'); markPatches(); });
+/* ---------------- shuffle: a new look, scene, texture and glitch mix within taste ---------------- */
+let SHUF_PREV=null;
+$('shuffle').addEventListener('click',()=>{
+  if(!SHUF_PREV) SHUF_PREV = sharedSnap();
+  const r=(a,b)=>Math.round((a+Math.random()*(b-a))*100)/100, pick=a=>a[Math.floor(Math.random()*a.length)];
+  const L=pick(LOOKS), pal={paper:'any',dusk:'dusk',sage:'sage',riso:'riso',night:'night'}[L.id];
+  const scenes=BGLIB.filter(b=>b.palette===pal || (pal==='any' && b.set==='animated'));
+  const sc = scenes.length ? pick(scenes).id : S.bgId;
+  const glitchy = Math.random()<0.5;
+  applySnap({ look:L.id, paperCol:L.paperCol, ink:L.ink, blue:L.blue, artTint:L.artTint, bgId:sc, bgSec:{q:'',l:'',p:''},
+    dashes:r(0.15,0.7), dashSpeed:r(0.2,0.7), clouds:r(0.1,0.8), cloudSpeed:r(0.2,0.6), light:r(0,0.5), grain:r(0.3,0.7), vignette:r(0.15,0.5),
+    misprint:r(0.1,0.5), rings:r(0.2,0.7), spectrum:r(0.1,0.6), echo: Math.random()<0.3 ? r(0.2,0.5) : 0,
+    glitch: glitchy ? r(0.2,0.6) : 0, glitchTear:r(0,0.8), glitchSplit:r(0,0.8), glitchBlocks:r(0,0.6), glitchRoll:r(0,0.5), gSort:Math.random()<0.3?r(0.2,0.6):0, gMirror:Math.random()<0.2?0.5:0,
+    fOffset: Math.random()<0.4 ? r(0.2,0.7) : 0, fSticker: S.frameShape==='cutout' ? r(0,0.7) : S.fSticker, bgBlur: Math.random()<0.3 ? r(0.2,0.6) : 0, bgDrift:r(0.2,0.8) });
+  markLook(); markPatches(); $('unshuffle').hidden=false; setStatus(`Shuffled: ${L.name}${sc?', new scene':''}`);
+});
+$('unshuffle').addEventListener('click',()=>{ if(!SHUF_PREV) return; applySnap(SHUF_PREV); SHUF_PREV=null; $('unshuffle').hidden=true; markLook(); markPatches(); setStatus('Back to the look before shuffling'); });
+setTimeout(markPatches, 400);
