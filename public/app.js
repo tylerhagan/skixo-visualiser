@@ -1766,10 +1766,10 @@ function rms(an){ an.getFloatTimeDomainData(anBuf); let p=0; for(let i=0;i<anBuf
 function uiTick(){
   if(S.blue!==uiBlue){ uiBlue=S.blue; const c=uiTone(S.blue); document.documentElement.style.setProperty('--kacc',c);
     PAD_COL.all=c; document.querySelectorAll('#mslotSeg button').forEach(b=>b.style.setProperty('--pc', uiTone(PAD_COL[b.dataset.v]||c))); }
-  const t=now(), live=playing && !!A, vis=KN.length && KN[0].kn.offsetParent;
-  if(vis){
+  const t=now(), live=playing && !!A, shown=KN.filter(o=>o.kn.offsetParent);   // each knob checks itself: knobs live on several tabs
+  if(shown.length){
     const st=live?motionAt(t):S;
-    for(const o of KN){
+    for(const o of shown){
       const v=+o.inp.value, f=(v-o.min)/o.span;
       let lf=f; if(live){ const e=kEnv(o.k,t,st); lf = o.k==='nodGate' ? energyAt(t) : ((st[o.k]-o.min)/o.span)*e; }
       const key=(f*500|0)+'/'+(live?(lf*500|0):'-');
