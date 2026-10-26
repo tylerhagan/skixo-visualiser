@@ -93,12 +93,12 @@ footer b { color: var(--fg); }
     <dl class="facts">
       <div><dt>Role</dt><dd>Concept, art direction, design and build</dd></div>
       <div><dt>Platform</dt><dd>Web (desktop, Chrome or Edge for rendering)</dd></div>
-      <div><dt>Status</dt><dd>In use for skixO releases (private tool)</dd></div>
+      <div><dt>Status</dt><dd>In use for skixO releases (private tool, public case study)</dd></div>
     </dl>
 
     <figure class="hero">
-      <img src="/case-study/img/editor.jpg" width="1600" height="1200" alt="The visualiser editor: a preview of the mascot badge over a dusk city skyline, a panel of looks, layout and scene controls on the right, and a full-width timeline below with Scene, Mood, Captions and Audio lanes.">
-      <figcaption>The editor on a release. Preview, the panel for the step you are on, and the timeline lanes underneath.</figcaption>
+      <img src="/case-study/img/editor.jpg" width="1600" height="1200" alt="The visualiser editor during playback on the Look tab: the mascot badge on cream paper, look swatches, ink chips with hex values, layout and scene controls on the right, and below a transport with time, bar and BPM readouts above a full-width timeline with Scene, Mood, Captions and Audio lanes.">
+      <figcaption>The editor on a release, during playback. Preview, the panel for the step you are on, and the timeline lanes underneath.</figcaption>
     </figure>
   </header>
 
@@ -111,7 +111,7 @@ footer b { color: var(--fg); }
   <section>
     <div class="col">
       <h2><span class="n">01</span>Reading the track</h2>
-      <p>The audio is analysed in the browser: low and high bands for kicks and hats, a smoothed energy curve for structure, and a tempo and downbeat estimate from the kicks. From that, every track splits into quiet, lifted and peak sections, and the two biggest moments get the peak treatment. Because the scale is relative to each track, a gentle song and a loud one both get the full range of looks.</p>
+      <p>The audio is analysed in the browser: low and high bands for kicks and hats, a smoothed energy curve for structure, and a tempo and downbeat estimate from the kicks. From that, every track splits into quiet, lifted and peak sections, and the two biggest moments get the peak treatment. Because the scale is relative to each track, a gentle song and a loud one both get the full range of looks. Tempo can also be tapped in by hand, and section edges can be dragged straight on the timeline when the automatic split needs a nudge.</p>
     </div>
     <div class="pair">
       <figure><img src="/case-study/img/frame-quiet.jpg" width="1600" height="900" loading="lazy" alt="A quiet section: the mascot in flat light inside a round badge, over a starry night sky with a crescent moon and low clouds."><figcaption>Quiet: flat light.</figcaption></figure>
@@ -132,7 +132,7 @@ footer b { color: var(--fg); }
     <div class="col">
       <h2><span class="n">03</span>Backgrounds that carry the story</h2>
       <p>The mascot stays calm while the world behind it changes. Each section can have its own scene, with its own opacity, blur and drift, and scene changes follow the same timing as the mascot.</p>
-      <p>A library of 67 backgrounds in three sets (wistful, surreal, glitch) and four palettes sits behind a picker, and a "match look" step samples a background to recolour the badge so it always belongs to the scene.</p>
+      <p>A library of 67 backgrounds in three sets (wistful, surreal, glitch) and four palettes sits behind a picker, alongside animated scenes drawn in code, and a "match look" step samples a background to recolour the badge so it always belongs to the scene.</p>
     </div>
     <figure><img src="/case-study/img/frame-peak.jpg" width="1600" height="900" loading="lazy" alt="A peak section: the mascot in side light with a wider smile, over a glitched sky with light rays, red and cyan channel splits and scan lines."><figcaption>A peak. The scene and the glitch change with the section, and the mascot stays calm.</figcaption></figure>
   </section>
@@ -140,7 +140,7 @@ footer b { color: var(--fg); }
   <section>
     <div class="col">
       <h2><span class="n">04</span>Consistency across a body of work</h2>
-      <p>Looks bundle paper, ink and accent colours and recolour the artwork to match. Release groups (an album, a series, a playlist) share a look and motion, while each release keeps its own track, titles, sections and captions. Groups export to a file for backup.</p>
+      <p>Looks bundle paper, ink and accent colours and recolour the artwork to match. Release groups (an album, a series, a playlist) share a look, motion and mascot frames, while each release keeps its own track, titles, sections and captions. Groups export to a file for backup.</p>
     </div>
     <figure><img src="/case-study/img/looks.jpg" width="1500" height="560" loading="lazy" alt="The same frame in five looks: paper blue, dusk in purple, sage in green, riso red, and night on a dark background."><figcaption>The five looks: Paper blue, Dusk, Sage, Riso red and Night.</figcaption></figure>
   </section>
@@ -148,7 +148,7 @@ footer b { color: var(--fg); }
   <section>
     <div class="col">
       <h2><span class="n">05</span>One render, a full set of assets</h2>
-      <p>Rendering is frame-accurate and runs entirely in the browser: 16:9 and 9:16 in one pass, an 8-second seamless Spotify Canvas loop, and still presets for YouTube thumbnails, Instagram posts and Story covers with a headline type style. Lyrics are timed by tapping along as the track plays, then styled with entrances, finishes and fade timings.</p>
+      <p>Rendering is frame-accurate and runs entirely in the browser: 16:9 and 9:16 in one pass, an 8-second seamless Spotify Canvas loop, and still presets for YouTube thumbnails, Instagram posts and Story covers with a headline type style. Lyrics are timed by tapping a large pad along with the track, then styled with entrances, finishes and fade timings.</p>
     </div>
     <div class="formats">
       <figure><img src="/case-study/img/frame-vertical.jpg" width="720" height="1280" loading="lazy" alt="The vertical cut: the badge over a dusk skyline, with the title and a two-line lyric caption below it."><figcaption>The 9:16 cut, rendered in the same pass as 16:9.</figcaption></figure>
@@ -156,11 +156,17 @@ footer b { color: var(--fg); }
     </div>
   </section>
 
-  <section class="col">
-    <h2><span class="n">06</span>Designing the tool itself</h2>
-    <p>The interface went through a research-led pass against established video editors. That brought a top bar with the essentials, a full-width timeline with Scene, Mood, Captions and Audio lanes (click a block to edit it), and a panel reorganised around the order you actually work through a release: release details, audio and sections, look, motion, export.</p>
-    <p>A second pass made the tool more playable. The amounts you set by feel (movement, nod and glitch) became knobs, and while the track plays their rings show what each setting is doing at that moment, so you can see the effect against the music rather than guess. Sections switch on pads in the timeline's mood colours, and the transport gained a bar and beat readout, a beat light and level meters. The rest stays flat on purpose, so the artwork remains the brightest thing on screen.</p>
+  <section>
+    <div class="col">
+      <h2><span class="n">06</span>Designing the tool itself</h2>
+      <p>The interface went through a research-led pass against established video editors. That brought a top bar with the essentials, a full-width timeline with Scene, Mood, Captions and Audio lanes (click a block to edit it), and a panel reorganised around the order you actually work through a release: release details, audio and sections, look, motion, export.</p>
+      <p>A second pass made the tool more playable. The amounts you set by feel (movement, nod, glitch and texture) became knobs, and while the track plays their rings show what each setting is doing at that moment, so you can see the effect against the music rather than guess. Sections switch on pads in the timeline's mood colours, the transport gained a bar and beat readout, a beat light and level meters, and rendering starts from a record button whose ring fills as it goes.</p>
+    </div>
     <figure><img src="/case-study/img/controls.jpg" width="1600" height="1000" loading="lazy" alt="The editor during playback on the Motion tab: section pads for All, Quiet, Lifted and Peak, rows of knobs for movement, nod and glitch with lit rings, and a transport with a time, bar and BPM readout, a beat light and level meters."><figcaption>Motion during playback. The lit rings move with the kicks and hats; the controls take their colour from the release's look.</figcaption></figure>
+    <div class="col">
+      <p>A third pass reworked how each value is chosen. Colours became ink chips with their hex value and an eyedropper that picks from anywhere on screen. Text placement became a small anchor grid, fonts are picked from specimens set in the release's own title, and the mascot frames became a thumbnail grid you can drop new art straight onto. On the stage, the portrait can be dragged into place and resized with the scroll wheel. Everything that needs precision stays flat, so the artwork remains the brightest thing on screen.</p>
+    </div>
+    <figure><img src="/case-study/img/look-tab.jpg" width="1600" height="1317" loading="lazy" alt="Three panels from the Look tab. Left: look swatches, ink, accent and paper chips with hex values and an eyedropper, and buttons to match colours from the artwork or the scene. Middle: a font specimen set in the release title, an anchor grid for text position, and texture knobs. Right: the mascot frame grid, with flat, side and peak rows across base, slight nod and deep nod columns."><figcaption>The Look tab: ink chips and colour matching, type with the anchor grid and texture knobs, and the mascot frame grid.</figcaption></figure>
   </section>
 
   <section class="col">
@@ -172,6 +178,7 @@ footer b { color: var(--fg); }
       <li>Release groups and looks for visual consistency across releases</li>
       <li>16:9, 9:16, Spotify Canvas and still exports from one setup</li>
       <li>Tactile controls where you play by feel: knobs with live rings, section pads, a beat readout and meters</li>
+      <li>Direct manipulation where it helps: drag the portrait on the stage, drag section edges on the timeline, drop art onto a frame</li>
     </ul>
   </section>
 
