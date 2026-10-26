@@ -102,8 +102,8 @@ function onChange(k){
 }
 
 /* ---------------- assets ---------------- */
-const IMGS = { a:null, b:null, c:null, h:null, w:null, n1c:null, n2c:null, n1f:null, n2f:null, n1p:null, n2p:null, cut:null, cutn:null, phones:null, line:null, logo:null, cpeak:null, cn1:null, cn2:null, cwear:null, sketch:null, halftone:null };
-const CUT_SLOTS = ['cut','cutn','phones','line','logo','cpeak','cn1','cn2','cwear','sketch','halftone'];   // transparent art: kept whole, never cropped to the disc
+const IMGS = { a:null, b:null, c:null, h:null, w:null, n1c:null, n2c:null, n1f:null, n2f:null, n1p:null, n2p:null, cut:null, cutn:null, phones:null, line:null, logo:null, cpeak:null, cn1:null, cn2:null, cwear:null, sketch:null, halftone:null, cpn1:null, cpn2:null, cwn1:null, cwn2:null };
+const CUT_SLOTS = ['cut','cutn','phones','line','logo','cpeak','cn1','cn2','cwear','sketch','halftone','cpn1','cpn2','cwn1','cwn2'];   // transparent art: kept whole, never cropped to the disc
 const NOD_SLOTS = ['n1c','n2c','n1f','n2f','n1p','n2p'], RAW = {};   // masked canvases for poses, raw bitmap for wide scene
 let wordmarkSrc = null, wordmarkImg = null;
 /* file slots: hide the native input, show a button and what's loaded */
@@ -323,7 +323,7 @@ function edgeRadii(){ let m=S.edge||'auto'; if(m==='auto') m = isDark(S.paperCol
 function refreshArt(){
   overlayCache={}; makeClouds(S.blue); wordmarkImg=null; loadWordmark();
   for(const k of ['a','b','c','h']) if(IMGS[k]) IMGS[k]=maskPose(IMGS[k]._src);
-  for(const k of ['cut','cutn','phones','cpeak','cn1','cn2','cwear','sketch','halftone']) if(IMGS[k] && IMGS[k]._src){ const src=IMGS[k]._src; IMGS[k]=tintWhole(src); IMGS[k]._src=src; }
+  for(const k of ['cut','cutn','phones','cpeak','cn1','cn2','cwear','sketch','halftone','cpn1','cpn2','cwn1','cwn2']) if(IMGS[k] && IMGS[k]._src){ const src=IMGS[k]._src; IMGS[k]=tintWhole(src); IMGS[k]._src=src; }
   FIN = new WeakMap(); LOGO_C=null; LINE_C=null; if(typeof processClip==='function') processClip();
   NOD_SLOTS.forEach(buildNod); markLook(); requestDraw();
 }
@@ -535,8 +535,9 @@ function nodLevel(t){
 }
 let CUT_T=0;
 function cutImg(kind){
-  if(kind==='line') return nodded(lineArt()); if(kind==='phones') return IMGS.cutn; if(kind==='wear') return nodded(IMGS.cwear);
-  if(kind==='cpeak') return nodded(IMGS.cpeak); if(kind==='sketch' || kind==='halftone') return nodded(IMGS[kind]);
+  if(kind==='line') return nodded(lineArt()); if(kind==='phones') return IMGS.cutn;
+  if(kind==='wear') return drawnNod(IMGS.cwear, IMGS.cwn1, IMGS.cwn2);
+  if(kind==='cpeak') return drawnNod(IMGS.cpeak, IMGS.cpn1, IMGS.cpn2); if(kind==='sketch' || kind==='halftone') return nodded(IMGS[kind]);
   if(!IMGS.cn1 && !IMGS.cn2) return nodded(IMGS.cut);
   const n=nodLevel(CUT_T); return (n===2 && (IMGS.cn2||IMGS.cn1)) || (n>=1 && (IMGS.cn1||IMGS.cn2)) || IMGS.cut;
 }
@@ -569,6 +570,8 @@ function madeMove(t){
   return i%2===0 ? 'd'+lv : (Math.floor(i/2)%2 ? 'r' : 'l')+lv;   // both: shrug, tilt left, shrug, tilt right
 }
 function nodded(img){ return synthMove(img, madeMove(CUT_T)); }
+// drawn nod frames when this drawing has them, otherwise the made head move
+function drawnNod(img, n1, n2){ if(!img) return img; if(!n1 && !n2) return nodded(img); const n=nodLevel(CUT_T); return (n===2 && (n2||n1)) || (n>=1 && (n1||n2)) || img; }
 /* headphones worn on the head: the art's cups sit too close together for this head, so it is drawn in three pieces.
    Source boxes are shares of the headphones image; targets are shares of the cut-out canvas (ears at about y 0.39, x 0.205 and 0.795). */
 const PHONES_FIT = { band:{src:[0.15,0,0.85,0.4], dst:[0.15,0.005,0.85,0.31]},
@@ -1471,13 +1474,13 @@ async function takeFile(file, slot){
     if(file.type.startsWith('audio') || /\.(wav|mp3|flac|ogg|m4a|aiff?)$/i.test(file.name)){ await loadAudio(file); store.put('audio-'+(LIB?LIB.current:'x'), file, file.name); $('trackName').textContent = file.name; setNote('audio', file.name); return; }
     if(file.type.startsWith('image')){
       const nm = file.name.match(/nod[-_ ]?(side|flat|peak)[-_ ]?([12])/i);
-      const s = slot || (/wearing/i.test(file.name) ? 'cwear' : /cut[-_ ]?nod[-_ ]?1/i.test(file.name) ? 'cn1' : /cut[-_ ]?nod[-_ ]?2/i.test(file.name) ? 'cn2' : /cut[-_ ]?peak/i.test(file.name) ? 'cpeak' : /sketch/i.test(file.name) ? 'sketch' : /halftone/i.test(file.name) ? 'halftone' : /line[-_ ]?art/i.test(file.name) ? 'line' : /no[-_ ]?head|no[-_ ]?phones/i.test(file.name) ? 'cutn' : /^head ?phones/i.test(file.name) ? 'phones' : /transparent|cut[-_ ]?out/i.test(file.name) ? 'cut' : /logo|emblem|\.svg$/i.test(file.name) ? 'logo' : nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /^(bg|scene|background)/i.test(file.name) ? 'bg' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
+      const s = slot || (/wearing[-_ ]?nod[-_ ]?1/i.test(file.name) ? 'cwn1' : /wearing[-_ ]?nod[-_ ]?2/i.test(file.name) ? 'cwn2' : /peak[-_ ]?nod[-_ ]?1/i.test(file.name) ? 'cpn1' : /peak[-_ ]?nod[-_ ]?2/i.test(file.name) ? 'cpn2' : /wearing/i.test(file.name) ? 'cwear' : /cut[-_ ]?nod[-_ ]?1/i.test(file.name) ? 'cn1' : /cut[-_ ]?nod[-_ ]?2/i.test(file.name) ? 'cn2' : /cut[-_ ]?peak/i.test(file.name) ? 'cpeak' : /sketch/i.test(file.name) ? 'sketch' : /halftone/i.test(file.name) ? 'halftone' : /line[-_ ]?art/i.test(file.name) ? 'line' : /no[-_ ]?head|no[-_ ]?phones/i.test(file.name) ? 'cutn' : /^head ?phones/i.test(file.name) ? 'phones' : /transparent|cut[-_ ]?out/i.test(file.name) ? 'cut' : /logo|emblem|\.svg$/i.test(file.name) ? 'logo' : nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /^(bg|scene|background)/i.test(file.name) ? 'bg' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
       await setPose(s, file); store.put(artKey(s), file, file.name); if(s==='bg'){ S.bgId=''; markBg(); persist(); } if(s==='h') rebuildCues(); setStatus(`Loaded ${file.name}`);
     }
   }catch(err){ setStatus(`Couldn't read ${file.name}. Try a WAV, MP3, PNG or JPG.`, true); }
 }
 $('f-audio').addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0]));
-for(const s of ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip','cpeak','cn1','cn2','cwear','sketch','halftone']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
+for(const s of ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip','cpeak','cn1','cn2','cwear','sketch','halftone','cpn1','cpn2','cwn1','cwn2']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
 const app = $('app');
 app.addEventListener('dragover', e=>{ e.preventDefault(); app.classList.add('drop'); });
 app.addEventListener('dragleave', e=>{ if(e.target===app) app.classList.remove('drop'); });
@@ -1910,7 +1913,7 @@ $('importFile').addEventListener('change', async e=>{
 const STARTER = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/peak-face.jpg', w:'assets/wallpaper.jpg',
   clip:'assets/intro-sway.mp4', cut:'assets/cut.webp', cpeak:'assets/cut-peak.webp', cn1:'assets/cut-nod-1.webp', cn2:'assets/cut-nod-2.webp', cwear:'assets/cut-wearing.webp', sketch:'assets/cut-sketch.webp', halftone:'assets/cut-halftone.webp', cutn:'assets/cut-nophones.webp', phones:'assets/phones.webp', line:'assets/line.webp',
   n1f:'assets/nod-flat-1.jpg', n2f:'assets/nod-flat-2.jpg', n1c:'assets/nod-side-1.jpg', n2c:'assets/nod-side-2.jpg', n1p:'assets/nod-peak-1.jpg', n2p:'assets/nod-peak-2.jpg' };
-const ART_SLOTS = ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip','cpeak','cn1','cn2','cwear','sketch','halftone'];
+const ART_SLOTS = ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip','cpeak','cn1','cn2','cwear','sketch','halftone','cpn1','cpn2','cwn1','cwn2'];
 const artKey = s => s==='bg' ? 'img-bg' : `img-${LIB ? grp().id : 'x'}-${s}`;
 let artGroup = null;
 async function loadArtwork(){
