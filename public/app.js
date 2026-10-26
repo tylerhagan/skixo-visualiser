@@ -535,10 +535,27 @@ function nodLevel(t){
 }
 let CUT_T=0;
 function cutImg(kind){
-  if(kind==='line') return lineArt(); if(kind==='phones') return IMGS.cutn; if(kind==='wear') return IMGS.cwear;
-  if(kind==='cpeak') return IMGS.cpeak; if(kind==='sketch' || kind==='halftone') return IMGS[kind];
+  if(kind==='line') return nodded(lineArt()); if(kind==='phones') return IMGS.cutn; if(kind==='wear') return nodded(IMGS.cwear);
+  if(kind==='cpeak') return nodded(IMGS.cpeak); if(kind==='sketch' || kind==='halftone') return nodded(IMGS[kind]);
+  if(!IMGS.cn1 && !IMGS.cn2) return nodded(IMGS.cut);
   const n=nodLevel(CUT_T); return (n===2 && (IMGS.cn2||IMGS.cn1)) || (n>=1 && (IMGS.cn1||IMGS.cn2)) || IMGS.cut;
 }
+/* drawings without their own nod frames (peak smile, wearing, sketch, line, halftone) get a made nod:
+   the head above the collar dips and tips forward by the same amount as the drawn nod frames, blended into the hoodie */
+const SYN_NOD = new WeakMap();
+function synthNod(img, level){
+  if(!img || !level) return img;
+  let pair = SYN_NOD.get(img); if(!pair){ pair=[]; SYN_NOD.set(img,pair); }
+  if(pair[level]) return pair[level];
+  const W=img.width, H=img.height, s0=0.58*H, s1=0.67*H, mk=()=>{ const c=document.createElement('canvas'); c.width=W; c.height=H; return c; };
+  const g=(x)=>{ const gr=x.createLinearGradient(0,s0,0,s1); gr.addColorStop(0,'#000'); gr.addColorStop(1,'rgba(0,0,0,0)'); return gr; };
+  const body=mk(), bx=body.getContext('2d'); bx.drawImage(img,0,0); bx.globalCompositeOperation='destination-out'; bx.fillStyle=g(bx); bx.fillRect(0,0,W,s1);
+  const head=mk(), hx=head.getContext('2d'); hx.drawImage(img,0,0); hx.globalCompositeOperation='destination-in'; hx.fillStyle=g(hx); hx.fillRect(0,0,W,s1);
+  const out=mk(), o=out.getContext('2d'), dy=[0,0.008,0.013][level]*H, sq=[0,0.006,0.011][level], pivot=0.64*H;
+  o.drawImage(body,0,0); o.translate(0,pivot+dy); o.scale(1,1-sq); o.translate(0,-pivot); o.drawImage(head,0,0);
+  pair[level]=out; return out;
+}
+function nodded(img){ return synthNod(img, nodLevel(CUT_T)); }
 /* headphones worn on the head: the art's cups sit too close together for this head, so it is drawn in three pieces.
    Source boxes are shares of the headphones image; targets are shares of the cut-out canvas (ears at about y 0.39, x 0.205 and 0.795). */
 const PHONES_FIT = { band:{src:[0.15,0,0.85,0.4], dst:[0.15,0.005,0.85,0.31]},
@@ -992,7 +1009,7 @@ function frameInner(ctx, W, H, t){
       }
       // a cut-out has no nod frames, so the whole figure dips gently on the beat instead
       let dip = 0;
-      if(cutout && sub==='mascot' && !IMGS.cn1 && !IMGS.cn2 && A && A.grid && S.nod>0 && energyAt(t)>=S.nodGate){ const P=A.grid.beat*(+S.nodEvery||1), ph=(((t-A.grid.phase+0.12*P)%P)+P)%P; dip = (ph<0.45*P ? Math.sin(Math.PI*ph/(0.45*P)) : 0)*S.nod*size*0.012; }
+      if(cutout && sub==='mascot' && cutKinds && cutKinds.includes('phones') && A && A.grid && S.nod>0 && energyAt(t)>=S.nodGate){ const P=A.grid.beat*(+S.nodEvery||1), ph=(((t-A.grid.phase+0.12*P)%P)+P)%P; dip = (ph<0.45*P ? Math.sin(Math.PI*ph/(0.45*P)) : 0)*S.nod*size*0.012; }
       ctx.save(); ctx.translate(cx,cy+dip); ctx.rotate(rot); ctx.scale(scale,scale);
       if(base){
         const sz = cutout||sub==='image' ? size*0.96 : size;
