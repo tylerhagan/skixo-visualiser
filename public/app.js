@@ -8,6 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
+  styleQ:'colour', styleL:'colour', styleP:'colour',
   introAnim:true, clipIn:0, clipOut:1.6, clipBars:'2',
   subject:'mascot', frameShape:'circle', fSticker:0, fShadow:0.35, fOffset:0, logoTint:'original', lineQuiet:false, phonesPeak:false, echoLine:false, patch:null,
   bgDrift:0.5, bgColour:'', glitch:0, gSort:0, gMosh:0, gMirror:0, echo:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capStyle:'outline', capColour:'ink', capWeight:'500', capCase:'typed', capAnim:'fade', capSpacing:0, capIn:0.25, capOut:0.3, capHold:6, capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
@@ -59,7 +60,7 @@ function syncUI(){
   if(typeof syncBgColour==='function') setTimeout(syncBgColour);
   if(typeof syncSeg==='function') setTimeout(syncSeg);
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars']) $(k).value = S[k];
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP']) $(k).value = S[k];
   $('useWordmark').checked = S.useWordmark; $('lineQuiet').checked=!!S.lineQuiet; $('introAnim').checked=S.introAnim!==false; $('phonesPeak').checked=!!S.phonesPeak; $('echoLine').checked=!!S.echoLine; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
@@ -74,7 +75,7 @@ function bindUI(){
       $(k+'-o').textContent = fmtVal(v); onChange(k);
     });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
   for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist','lineQuiet','phonesPeak','echoLine','introAnim']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
@@ -101,8 +102,8 @@ function onChange(k){
 }
 
 /* ---------------- assets ---------------- */
-const IMGS = { a:null, b:null, c:null, h:null, w:null, n1c:null, n2c:null, n1f:null, n2f:null, n1p:null, n2p:null, cut:null, cutn:null, phones:null, line:null, logo:null };
-const CUT_SLOTS = ['cut','cutn','phones','line','logo'];   // transparent art: kept whole, never cropped to the disc
+const IMGS = { a:null, b:null, c:null, h:null, w:null, n1c:null, n2c:null, n1f:null, n2f:null, n1p:null, n2p:null, cut:null, cutn:null, phones:null, line:null, logo:null, cpeak:null, cn1:null, cn2:null, cwear:null, sketch:null, halftone:null };
+const CUT_SLOTS = ['cut','cutn','phones','line','logo','cpeak','cn1','cn2','cwear','sketch','halftone'];   // transparent art: kept whole, never cropped to the disc
 const NOD_SLOTS = ['n1c','n2c','n1f','n2f','n1p','n2p'], RAW = {};   // masked canvases for poses, raw bitmap for wide scene
 let wordmarkSrc = null, wordmarkImg = null;
 /* file slots: hide the native input, show a button and what's loaded */
@@ -322,7 +323,7 @@ function edgeRadii(){ let m=S.edge||'auto'; if(m==='auto') m = isDark(S.paperCol
 function refreshArt(){
   overlayCache={}; makeClouds(S.blue); wordmarkImg=null; loadWordmark();
   for(const k of ['a','b','c','h']) if(IMGS[k]) IMGS[k]=maskPose(IMGS[k]._src);
-  for(const k of ['cut','cutn','phones']) if(IMGS[k] && IMGS[k]._src){ const src=IMGS[k]._src; IMGS[k]=tintWhole(src); IMGS[k]._src=src; }
+  for(const k of ['cut','cutn','phones','cpeak','cn1','cn2','cwear','sketch','halftone']) if(IMGS[k] && IMGS[k]._src){ const src=IMGS[k]._src; IMGS[k]=tintWhole(src); IMGS[k]._src=src; }
   FIN = new WeakMap(); LOGO_C=null; LINE_C=null; if(typeof processClip==='function') processClip();
   NOD_SLOTS.forEach(buildNod); markLook(); requestDraw();
 }
@@ -518,8 +519,26 @@ function logoArt(){
   x.drawImage(src,(n-w)/2,(n-h)/2,w,h); c._k=key; c._src=L; LOGO_C=c; return c;
 }
 // cut-out mascot: line art when quiet (optional), headphones go on at the peaks (optional)
-function cutFor(p){ if(p===0 && S.lineQuiet && IMGS.line) return 'line'; if(p===2 && S.phonesPeak && IMGS.cutn && IMGS.phones) return 'phones'; return 'cut'; }
-function cutImg(kind){ return kind==='line' ? lineArt() : kind==='phones' ? IMGS.cutn : IMGS.cut; }
+function cutFor(p){
+  const sec=Math.min(p===3?1:p,2), st=[S.styleQ, S.styleL, S.styleP][sec]||'colour';
+  if(st==='line' && IMGS.line) return 'line';
+  if((st==='sketch' || st==='halftone') && IMGS[st]) return st;
+  if(sec===2){ if(S.phonesPeak && IMGS.cwear) return 'wear'; if(S.phonesPeak && IMGS.cutn && IMGS.phones) return 'phones'; if(IMGS.cpeak) return 'cpeak'; }
+  return 'cut';
+}
+// nod level for the cut-out (0 none, 1 slight, 2 deep), same shape as the framed nod
+function nodLevel(t){
+  if(!A || !A.grid || S.nod<=0 || energyAt(t) < S.nodGate) return 0;
+  const P=A.grid.beat*(+S.nodEvery||1), lead=0.12*P, hold=(0.14+0.16*S.nod)*P, tail=0.14*P, ph=(((t-A.grid.phase+lead)%P)+P)%P;
+  const deep = S.nod>0.65 ? 2 : 1;
+  return ph<lead ? 1 : ph<lead+hold ? deep : ph<lead+hold+tail ? 1 : 0;
+}
+let CUT_T=0;
+function cutImg(kind){
+  if(kind==='line') return lineArt(); if(kind==='phones') return IMGS.cutn; if(kind==='wear') return IMGS.cwear;
+  if(kind==='cpeak') return IMGS.cpeak; if(kind==='sketch' || kind==='halftone') return IMGS[kind];
+  const n=nodLevel(CUT_T); return (n===2 && (IMGS.cn2||IMGS.cn1)) || (n>=1 && (IMGS.cn1||IMGS.cn2)) || IMGS.cut;
+}
 /* headphones worn on the head: the art's cups sit too close together for this head, so it is drawn in three pieces.
    Source boxes are shares of the headphones image; targets are shares of the cut-out canvas (ears at about y 0.39, x 0.205 and 0.795). */
 const PHONES_FIT = { band:{src:[0.15,0,0.85,0.4], dst:[0.15,0.005,0.85,0.31]},
@@ -952,7 +971,7 @@ function frameInner(ctx, W, H, t){
     else {
       let base, top, mix = ps.mix, cutKinds = null;
       if(sub==='image'){ base = top = logoArt(); mix = 1; }
-      else if(cutout && IMGS.cut){ cutKinds = [cutFor(ps.from), cutFor(ps.to)];
+      else if(cutout && IMGS.cut){ CUT_T = t; cutKinds = [cutFor(ps.from), cutFor(ps.to)];
         if(cutKinds[0]!==cutKinds[1]){ cutKinds = mix<0.5 ? [cutKinds[0],cutKinds[0]] : [cutKinds[1],cutKinds[1]]; mix = 1; }   // different drawings cut cleanly, never ghost
         base = cutImg(cutKinds[0]); top = cutImg(cutKinds[1]); }
       else {
@@ -973,7 +992,7 @@ function frameInner(ctx, W, H, t){
       }
       // a cut-out has no nod frames, so the whole figure dips gently on the beat instead
       let dip = 0;
-      if(cutout && sub==='mascot' && A && A.grid && S.nod>0 && energyAt(t)>=S.nodGate){ const P=A.grid.beat*(+S.nodEvery||1), ph=(((t-A.grid.phase+0.12*P)%P)+P)%P; dip = (ph<0.45*P ? Math.sin(Math.PI*ph/(0.45*P)) : 0)*S.nod*size*0.012; }
+      if(cutout && sub==='mascot' && !IMGS.cn1 && !IMGS.cn2 && A && A.grid && S.nod>0 && energyAt(t)>=S.nodGate){ const P=A.grid.beat*(+S.nodEvery||1), ph=(((t-A.grid.phase+0.12*P)%P)+P)%P; dip = (ph<0.45*P ? Math.sin(Math.PI*ph/(0.45*P)) : 0)*S.nod*size*0.012; }
       ctx.save(); ctx.translate(cx,cy+dip); ctx.rotate(rot); ctx.scale(scale,scale);
       if(base){
         const sz = cutout||sub==='image' ? size*0.96 : size;
@@ -1422,13 +1441,13 @@ async function takeFile(file, slot){
     if(file.type.startsWith('audio') || /\.(wav|mp3|flac|ogg|m4a|aiff?)$/i.test(file.name)){ await loadAudio(file); store.put('audio-'+(LIB?LIB.current:'x'), file, file.name); $('trackName').textContent = file.name; setNote('audio', file.name); return; }
     if(file.type.startsWith('image')){
       const nm = file.name.match(/nod[-_ ]?(side|flat|peak)[-_ ]?([12])/i);
-      const s = slot || (/line[-_ ]?art/i.test(file.name) ? 'line' : /no[-_ ]?head|no[-_ ]?phones/i.test(file.name) ? 'cutn' : /^head ?phones/i.test(file.name) ? 'phones' : /transparent|cut[-_ ]?out/i.test(file.name) ? 'cut' : /logo|emblem|\.svg$/i.test(file.name) ? 'logo' : nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /^(bg|scene|background)/i.test(file.name) ? 'bg' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
+      const s = slot || (/wearing/i.test(file.name) ? 'cwear' : /cut[-_ ]?nod[-_ ]?1/i.test(file.name) ? 'cn1' : /cut[-_ ]?nod[-_ ]?2/i.test(file.name) ? 'cn2' : /cut[-_ ]?peak/i.test(file.name) ? 'cpeak' : /sketch/i.test(file.name) ? 'sketch' : /halftone/i.test(file.name) ? 'halftone' : /line[-_ ]?art/i.test(file.name) ? 'line' : /no[-_ ]?head|no[-_ ]?phones/i.test(file.name) ? 'cutn' : /^head ?phones/i.test(file.name) ? 'phones' : /transparent|cut[-_ ]?out/i.test(file.name) ? 'cut' : /logo|emblem|\.svg$/i.test(file.name) ? 'logo' : nm ? 'n'+nm[2]+({flat:'f',side:'c',peak:'p'})[nm[1].toLowerCase()] : /wide|wall|banner/i.test(file.name) ? 'w' : /^(bg|scene|background)/i.test(file.name) ? 'bg' : /half|mid|between/i.test(file.name) ? 'h' : /peak|peek|smile|open|eyes/i.test(file.name) ? 'c' : /shadow|light/i.test(file.name) ? 'b' : 'a');
       await setPose(s, file); store.put(artKey(s), file, file.name); if(s==='bg'){ S.bgId=''; markBg(); persist(); } if(s==='h') rebuildCues(); setStatus(`Loaded ${file.name}`);
     }
   }catch(err){ setStatus(`Couldn't read ${file.name}. Try a WAV, MP3, PNG or JPG.`, true); }
 }
 $('f-audio').addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0]));
-for(const s of ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
+for(const s of ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip','cpeak','cn1','cn2','cwear','sketch','halftone']) $('f-'+s).addEventListener('change', e=> e.target.files[0] && takeFile(e.target.files[0], s));
 const app = $('app');
 app.addEventListener('dragover', e=>{ e.preventDefault(); app.classList.add('drop'); });
 app.addEventListener('dragleave', e=>{ if(e.target===app) app.classList.remove('drop'); });
@@ -1581,7 +1600,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
-const SHARED_KEYS = ['introAnim','clipIn','clipOut','clipBars','subject','frameShape','fSticker','fShadow','fOffset','logoTint','lineQuiet','phonesPeak','echoLine','look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
+const SHARED_KEYS = ['styleQ','styleL','styleP','introAnim','clipIn','clipOut','clipBars','subject','frameShape','fSticker','fShadow','fOffset','logoTint','lineQuiet','phonesPeak','echoLine','look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
   'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
@@ -1859,9 +1878,9 @@ $('importFile').addEventListener('change', async e=>{
 /* ---------------- artwork per release group ----------------
    Mascot frames you drop in are saved for the current group; groups without their own use the starter set. */
 const STARTER = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/peak-face.jpg', w:'assets/wallpaper.jpg',
-  clip:'assets/intro-sway.mp4', cut:'assets/cut.webp', cutn:'assets/cut-nophones.webp', phones:'assets/phones.webp', line:'assets/line.webp',
+  clip:'assets/intro-sway.mp4', cut:'assets/cut.webp', cpeak:'assets/cut-peak.webp', cn1:'assets/cut-nod-1.webp', cn2:'assets/cut-nod-2.webp', cwear:'assets/cut-wearing.webp', sketch:'assets/cut-sketch.webp', halftone:'assets/cut-halftone.webp', cutn:'assets/cut-nophones.webp', phones:'assets/phones.webp', line:'assets/line.webp',
   n1f:'assets/nod-flat-1.jpg', n2f:'assets/nod-flat-2.jpg', n1c:'assets/nod-side-1.jpg', n2c:'assets/nod-side-2.jpg', n1p:'assets/nod-peak-1.jpg', n2p:'assets/nod-peak-2.jpg' };
-const ART_SLOTS = ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip'];
+const ART_SLOTS = ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip','cpeak','cn1','cn2','cwear','sketch','halftone'];
 const artKey = s => s==='bg' ? 'img-bg' : `img-${LIB ? grp().id : 'x'}-${s}`;
 let artGroup = null;
 async function loadArtwork(){
@@ -1973,10 +1992,11 @@ window.LOOKUI_READY=true; syncLookUI(); recProgress(null);
 
 /* ---------------- subject panel ---------------- */
 function syncSubjectUI(){
+  if(S.lineQuiet){ S.styleQ='line'; S.lineQuiet=false; if(typeof syncSeg==='function') setTimeout(syncSeg); persist(); }   // older switch becomes the quiet style
   const sub=S.subject||'mascot', cut=S.frameShape==='cutout';
   $('frameRow').hidden = sub==='text'; $('logoRow').hidden = sub!=='image';
-  $('lineRow').hidden = $('phonesRow').hidden = !(sub==='mascot' && cut);
-  const notes = { mascot: cut ? 'The cut-out uses your transparent mascot files. It has no nod frames, so the whole figure dips on the beat instead.' : 'Your mascot frames, cropped to the frame shape.',
+  $('styleRows').hidden = $('phonesRow').hidden = !(sub==='mascot' && cut);
+  const notes = { mascot: cut ? 'The cut-out uses your transparent mascot files: it nods with the cut-out nod frames and smiles at the peaks. Each section can have its own drawing style.' : 'Your mascot frames, cropped to the frame shape.',
     image: 'Any PNG or SVG. All the motion, scenes and glitch still apply. Circle and Rounded put it on an accent plate; Cut-out keeps its own shape.',
     text: 'The title becomes the subject, set in your font. The label is hidden, since the title is already the centrepiece.' };
   $('subjectNote').textContent = notes[sub];

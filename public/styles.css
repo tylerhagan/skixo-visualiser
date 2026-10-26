@@ -263,7 +263,7 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-s
 #patchStore[aria-pressed="true"]{background:#d0654f;border-color:#d0654f;color:#111}
 /* subject */
 .logorow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:start}
-.fcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
+.fcuts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:6px}
 .fcuts>div{display:flex;flex-direction:column;gap:4px;min-width:0}
 .fcuts .fh{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ftile canvas{background:repeating-conic-gradient(#1b1f22 0 25%,#15181b 0 50%) 0 0/12px 12px}
