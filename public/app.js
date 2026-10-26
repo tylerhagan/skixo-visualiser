@@ -1911,7 +1911,7 @@ $('importFile').addEventListener('change', async e=>{
 /* ---------------- artwork per release group ----------------
    Mascot frames you drop in are saved for the current group; groups without their own use the starter set. */
 const STARTER = { a:'assets/wistful.jpg', b:'assets/wistful-shadow.jpg', c:'assets/peak-face.jpg', w:'assets/wallpaper.jpg',
-  clip:'assets/intro-sway.mp4', cut:'assets/cut.webp', cpeak:'assets/cut-peak.webp', cn1:'assets/cut-nod-1.webp', cn2:'assets/cut-nod-2.webp', cwear:'assets/cut-wearing.webp', sketch:'assets/cut-sketch.webp', halftone:'assets/cut-halftone.webp', cutn:'assets/cut-nophones.webp', phones:'assets/phones.webp', line:'assets/line.webp',
+  clip:'assets/intro-sway.mp4', cut:'assets/cut.webp', cpeak:'assets/cut-peak.webp', cn1:'assets/cut-nod-1.webp', cn2:'assets/cut-nod-2.webp', cwear:'assets/cut-wearing.webp', cpn1:'assets/cut-peak-nod-1.webp', cpn2:'assets/cut-peak-nod-2.webp', cwn1:'assets/cut-wearing-nod-1.webp', cwn2:'assets/cut-wearing-nod-2.webp', sketch:'assets/cut-sketch.webp', halftone:'assets/cut-halftone.webp', cutn:'assets/cut-nophones.webp', phones:'assets/phones.webp', line:'assets/line.webp',
   n1f:'assets/nod-flat-1.jpg', n2f:'assets/nod-flat-2.jpg', n1c:'assets/nod-side-1.jpg', n2c:'assets/nod-side-2.jpg', n1p:'assets/nod-peak-1.jpg', n2p:'assets/nod-peak-2.jpg' };
 const ART_SLOTS = ['a','b','c','h','w','bg','n1c','n2c','n1f','n2f','n1p','n2p','cut','cutn','phones','line','logo','clip','cpeak','cn1','cn2','cwear','sketch','halftone','cpn1','cpn2','cwn1','cwn2'];
 const artKey = s => s==='bg' ? 'img-bg' : `img-${LIB ? grp().id : 'x'}-${s}`;
