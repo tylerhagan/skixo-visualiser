@@ -8,7 +8,7 @@ const DEFAULTS = {
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
   title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
-  styleQ:'colour', styleL:'colour', styleP:'colour',
+  styleQ:'colour', styleL:'colour', styleP:'colour', headMove:'shrug',
   introAnim:true, clipIn:0, clipOut:1.6, clipBars:'2',
   subject:'mascot', frameShape:'circle', fSticker:0, fShadow:0.35, fOffset:0, logoTint:'original', lineQuiet:false, phonesPeak:false, echoLine:false, patch:null,
   bgDrift:0.5, bgColour:'', glitch:0, gSort:0, gMosh:0, gMirror:0, echo:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capStyle:'outline', capColour:'ink', capWeight:'500', capCase:'typed', capAnim:'fade', capSpacing:0, capIn:0.25, capOut:0.3, capHold:6, capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
@@ -60,7 +60,7 @@ function syncUI(){
   if(typeof syncBgColour==='function') setTimeout(syncBgColour);
   if(typeof syncSeg==='function') setTimeout(syncSeg);
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP']) $(k).value = S[k];
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP','headMove']) $(k).value = S[k];
   $('useWordmark').checked = S.useWordmark; $('lineQuiet').checked=!!S.lineQuiet; $('introAnim').checked=S.introAnim!==false; $('phonesPeak').checked=!!S.phonesPeak; $('echoLine').checked=!!S.echoLine; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
 }
@@ -75,7 +75,7 @@ function bindUI(){
       $(k+'-o').textContent = fmtVal(v); onChange(k);
     });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP','headMove']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
   for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist','lineQuiet','phonesPeak','echoLine','introAnim']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
@@ -543,19 +543,32 @@ function cutImg(kind){
 /* drawings without their own nod frames (peak smile, wearing, sketch, line, halftone) get a made nod:
    the head above the collar dips and tips forward by the same amount as the drawn nod frames, blended into the hoodie */
 const SYN_NOD = new WeakMap();
-function synthNod(img, level){
-  if(!img || !level) return img;
-  let pair = SYN_NOD.get(img); if(!pair){ pair=[]; SYN_NOD.set(img,pair); }
-  if(pair[level]) return pair[level];
+// move: 'd1'/'d2' dip (shrug), 'l1'/'l2'/'r1'/'r2' tilt left or right, pivoting at the neck
+function synthMove(img, move){
+  if(!img || !move) return img;
+  let cache = SYN_NOD.get(img); if(!cache){ cache={}; SYN_NOD.set(img,cache); }
+  if(cache[move]) return cache[move];
   const W=img.width, H=img.height, s0=0.58*H, s1=0.67*H, mk=()=>{ const c=document.createElement('canvas'); c.width=W; c.height=H; return c; };
-  const g=(x)=>{ const gr=x.createLinearGradient(0,s0,0,s1); gr.addColorStop(0,'#000'); gr.addColorStop(1,'rgba(0,0,0,0)'); return gr; };
-  const body=mk(), bx=body.getContext('2d'); bx.drawImage(img,0,0); bx.globalCompositeOperation='destination-out'; bx.fillStyle=g(bx); bx.fillRect(0,0,W,s1);
-  const head=mk(), hx=head.getContext('2d'); hx.drawImage(img,0,0); hx.globalCompositeOperation='destination-in'; hx.fillStyle=g(hx); hx.fillRect(0,0,W,s1);
-  const out=mk(), o=out.getContext('2d'), dy=[0,0.008,0.013][level]*H, sq=[0,0.006,0.011][level], pivot=0.64*H;
-  o.drawImage(body,0,0); o.translate(0,pivot+dy); o.scale(1,1-sq); o.translate(0,-pivot); o.drawImage(head,0,0);
-  pair[level]=out; return out;
+  // body: everything from the top of the blend zone down stays fully solid, so nothing behind can show through the join
+  const body=mk(), bx=body.getContext('2d'); bx.drawImage(img,0,0); bx.clearRect(0,0,W,s0);
+  // head: solid above the blend zone, fading out through it, drawn over the solid body
+  const head=mk(), hx=head.getContext('2d'); hx.drawImage(img,0,0); hx.globalCompositeOperation='destination-in';
+  const gr=hx.createLinearGradient(0,s0,0,s1); gr.addColorStop(0,'#000'); gr.addColorStop(1,'rgba(0,0,0,0)'); hx.fillStyle=gr; hx.fillRect(0,0,W,s1);
+  const out=mk(), o=out.getContext('2d'), lv=+move[1], px=0.5*W, py=0.64*H;
+  o.drawImage(body,0,0);
+  if(move[0]==='d'){ const dy=[0,0.008,0.013][lv]*H, sq=[0,0.004,0.007][lv]; o.translate(0,py+dy); o.scale(1,1-sq); o.translate(0,-py); }
+  else { const ang=(move[0]==='l'?-1:1)*[0,2.6,4][lv]*Math.PI/180; o.translate(px,py); o.rotate(ang); o.translate(-px,-py); }
+  o.drawImage(head,0,0);
+  cache[move]=out; return out;
 }
-function nodded(img){ return synthNod(img, nodLevel(CUT_T)); }
+function madeMove(t){
+  const lv=nodLevel(t); if(!lv || !A || !A.grid) return null;
+  const P=A.grid.beat*(+S.nodEvery||1), i=Math.floor((t-A.grid.phase+0.12*P)/P), m=S.headMove||'shrug';
+  if(m==='shrug') return 'd'+lv;
+  if(m==='tilt') return (i%2?'r':'l')+lv;
+  return i%2===0 ? 'd'+lv : (Math.floor(i/2)%2 ? 'r' : 'l')+lv;   // both: shrug, tilt left, shrug, tilt right
+}
+function nodded(img){ return synthMove(img, madeMove(CUT_T)); }
 /* headphones worn on the head: the art's cups sit too close together for this head, so it is drawn in three pieces.
    Source boxes are shares of the headphones image; targets are shares of the cut-out canvas (ears at about y 0.39, x 0.205 and 0.795). */
 const PHONES_FIT = { band:{src:[0.15,0,0.85,0.4], dst:[0.15,0.005,0.85,0.31]},
@@ -1617,7 +1630,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
-const SHARED_KEYS = ['styleQ','styleL','styleP','introAnim','clipIn','clipOut','clipBars','subject','frameShape','fSticker','fShadow','fOffset','logoTint','lineQuiet','phonesPeak','echoLine','look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
+const SHARED_KEYS = ['headMove','styleQ','styleL','styleP','introAnim','clipIn','clipOut','clipBars','subject','frameShape','fSticker','fShadow','fOffset','logoTint','lineQuiet','phonesPeak','echoLine','look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
   'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
