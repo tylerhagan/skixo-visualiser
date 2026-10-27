@@ -222,7 +222,7 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-s
 .stagewrap{position:relative}
 .stagewrap.handles #stage{cursor:grab}
 .stagewrap.grab #stage{cursor:grabbing}
-.stagehint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-size:11px;color:var(--fg);background:#0b0c0dcc;border:1px solid var(--line);border-radius:12px;padding:3px 10px;pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
+.stagehint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-size:11px;color:var(--fg);background:#0b0c0dcc;border:1px solid var(--line);border-radius:12px;padding:3px 10px;pointer-events:none;opacity:0;transition:opacity .2s;max-width:94%;text-align:center}
 .stagewrap.handles:hover .stagehint{opacity:1}
 .stagewrap.grab .stagehint{opacity:0}
 /* tap pad and tap tempo */
@@ -270,3 +270,10 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-s
 .clipbox{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:start;margin-top:8px}
 .clipbox>div:first-child{display:flex;flex-direction:column;gap:4px}
 .introstate[data-k="on"]{color:var(--kacc)} .introstate[data-k="off"]{color:var(--warn)}
+
+/* headline height row */
+.row .sub{display:block;font-size:10px;color:var(--muted);line-height:1.3}
+.hctl{display:grid;grid-template-columns:minmax(0,1fr) 44px auto;gap:8px;align-items:center}
+.hctl output{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.hctl .mini{font-size:11px;padding:2px 8px}
+.hctl .mini:disabled{opacity:.4}
