@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>skixO Music Video Visualiser · Case study · Tyler Hagan</title>
-<meta name="description" content="A browser-based studio that turns a skixO track and a set of mascot frames into an audio-reactive music video, plus every promo asset around it.">
+<title>skixO Release Kit Generator · Case study · Tyler Hagan</title>
+<meta name="description" content="A browser-based pipeline that turns one skixO track into a full release kit: the music video, a vertical cut, a Spotify Canvas, cover art, social stills and a SoundCloud banner, in one consistent look.">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,6 +43,10 @@ h1 { margin-top: 12px; font-size: clamp(2.1rem, 1.4rem + 3.4vw, 3.9rem); font-we
 .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 24px; margin: 30px 0 0; padding: 18px 0 20px; border-top: 1px solid var(--fg); border-bottom: 1px solid var(--fg); font-size: 0.92rem; color: var(--fg-2); }
 .facts dt { font: 500 0.78rem/1.4 var(--mono); color: var(--muted); }
 .facts dd { margin: 4px 0 0; line-height: 1.45; }
+.tldr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; margin: 0; padding: 18px 0 20px; border-bottom: 1px solid var(--fg); }
+.tldr dt { font: 500 0.78rem/1.4 var(--mono); color: var(--accent); }
+.tldr dd { margin: 6px 0 0; font-size: 1.02rem; line-height: 1.5; max-width: 46ch; }
+.banner { margin-top: 16px; }
 
 figure { margin-top: 32px; }
 figure img { border: 1px solid var(--rule); background: var(--sheet); border-radius: 4px; }
@@ -73,6 +77,7 @@ footer b { color: var(--fg); }
   .top { padding-left: 16px; padding-right: 16px; }
   .wrap { padding-left: 16px; padding-right: 16px; }
   .facts { grid-template-columns: 1fr; gap: 10px; }
+  .tldr { grid-template-columns: 1fr; gap: 14px; }
   .pair { grid-template-columns: 1fr; }
 }
 </style>
@@ -87,31 +92,36 @@ footer b { color: var(--fg); }
 <main class="wrap">
   <header class="intro">
     <p class="kind">Case study · Self-initiated tool, 2026</p>
-    <h1>skixO · Music Video Visualiser</h1>
-    <p class="dek">A browser-based studio that turns a skixO track and a set of mascot frames into an audio-reactive music video, plus every promo asset around it.</p>
+    <h1>skixO · Release Kit Generator</h1>
+    <p class="dek">A browser-based pipeline that turns one track into a whole release: the music video, a vertical cut, a Spotify Canvas, cover art, social stills and a SoundCloud banner, all in one consistent look.</p>
 
     <dl class="facts">
       <div><dt>Role</dt><dd>Concept, art direction, design and build</dd></div>
       <div><dt>Platform</dt><dd>Web (desktop, Chrome or Edge for rendering)</dd></div>
       <div><dt>Status</dt><dd>In use for skixO releases (private tool, public case study)</dd></div>
     </dl>
+    <dl class="tldr">
+      <div><dt>Problem</dt><dd>Every release needs around nine assets in different shapes. Each one meant starting from scratch, and the visuals drifted from one release to the next.</dd></div>
+      <div><dt>Outcome</dt><dd>One visual system per release series. Drop in a track and a single click produces the whole kit, consistent across every release in the series.</dd></div>
+    </dl>
 
     <figure class="hero">
-      <img src="/case-study/img/editor.jpg" width="1600" height="1200" alt="The visualiser editor during playback on the Look tab: the mascot badge on cream paper, look swatches, ink chips with hex values, layout and scene controls on the right, and below a transport with time, bar and BPM readouts above a full-width timeline with Scene, Mood, Captions and Audio lanes.">
-      <figcaption>The editor on a release, during playback. Preview, the panel for the step you are on, and the timeline lanes underneath.</figcaption>
+      <img src="/case-study/img/kit-overview.jpg" width="1098" height="878" alt="The kit overview sheet: a YouTube thumbnail, an Instagram post, a story cover, a square, cover art, a SoundCloud banner and a 16:9 video frame, all showing the mascot over the same glitched dusk sky with the title glad you came, each with an Edit button.">
+      <figcaption>The kit overview. Every output for a release, rendered at the track's biggest moment, each one a click away from editing.</figcaption>
     </figure>
   </header>
 
   <section class="col">
     <h2>The brief</h2>
-    <p class="lead">Every skixO release needs a video, a vertical cut, a Spotify Canvas and a handful of stills, and each of those used to mean starting from scratch.</p>
-    <p>I wanted the opposite: a visual identity strong enough to repeat, and a tool that could apply it to any new track in minutes. The visualiser listens to the track, works out its structure, and animates a calm, closed-eyed mascot against shifting backgrounds, in the spirit of a classic static-artwork visualiser rather than a full music video.</p>
+    <p class="lead">A skixO release isn't one asset. It's a video, a vertical cut, a Spotify Canvas, cover art and a stack of social stills, all in different shapes and all needing to feel like the same release.</p>
+    <p>It started as a visualiser: a calm, closed-eyed mascot animated against shifting backgrounds, in the spirit of a classic static-artwork visualiser rather than a full music video. Building it showed that the video was the easy part. The real work was everything around it, repeated for every release.</p>
+    <p>So the tool became a pipeline. A release series shares one visual system (look, motion, mascot and scene rules), and each new track runs through it to produce every asset in one go.</p>
   </section>
 
   <section>
     <div class="col">
       <h2><span class="n">01</span>Reading the track</h2>
-      <p>The audio is analysed in the browser: low and high bands for kicks and hats, a smoothed energy curve for structure, and a tempo and downbeat estimate from the kicks. From that, every track splits into quiet, lifted and peak sections, and the two biggest moments get the peak treatment. Because the scale is relative to each track, a gentle song and a loud one both get the full range of looks. Tempo can also be tapped in by hand, and section edges can be dragged straight on the timeline when the automatic split needs a nudge.</p>
+      <p>The audio is analysed in the browser: low and high bands for kicks and hats, a smoothed energy curve for structure, and a tempo and downbeat estimate from the kicks. From that, every track splits into quiet, lifted and peak sections, and the two biggest moments get the peak treatment. The biggest of all becomes the frame every still is taken from. Because the scale is relative to each track, a gentle song and a loud one both get the full range of looks. Tempo can also be tapped in by hand, and section edges can be dragged straight on the timeline when the automatic split needs a nudge.</p>
     </div>
     <div class="pair">
       <figure><img src="/case-study/img/frame-quiet.jpg" width="1600" height="900" loading="lazy" alt="A quiet section: the mascot in flat light inside a round badge, over a starry night sky with a crescent moon and low clouds."><figcaption>Quiet: flat light.</figcaption></figure>
@@ -133,6 +143,7 @@ footer b { color: var(--fg); }
       <h2><span class="n">03</span>Backgrounds that carry the story</h2>
       <p>The mascot stays calm while the world behind it changes. Each section can have its own scene, with its own opacity, blur and drift, and scene changes follow the same timing as the mascot.</p>
       <p>A library of 67 backgrounds in three sets (wistful, surreal, glitch) and four palettes sits behind a picker, alongside animated scenes drawn in code, and a "match look" step samples a background to recolour the badge so it always belongs to the scene.</p>
+      <p>Picking scenes by hand for every release didn't scale, so each series now has a scene recipe: wistful scenes for quiet passages, surreal as it lifts, glitch at the peaks, all in the look's palette. Each new release picks its own scenes from that recipe and avoids the ones its sister releases already use, so a series feels related without repeating. A scene picked by hand always wins.</p>
     </div>
     <figure><img src="/case-study/img/frame-peak.jpg" width="1600" height="900" loading="lazy" alt="A peak section: the mascot in side light with a wider smile, over a glitched sky with light rays, red and cyan channel splits and scan lines."><figcaption>A peak. The scene and the glitch change with the section, and the mascot stays calm.</figcaption></figure>
   </section>
@@ -147,8 +158,9 @@ footer b { color: var(--fg); }
 
   <section>
     <div class="col">
-      <h2><span class="n">05</span>One render, a full set of assets</h2>
-      <p>Rendering is frame-accurate and runs entirely in the browser: 16:9 and 9:16 in one pass, an 8-second seamless Spotify Canvas loop, and still presets for YouTube thumbnails, Instagram posts and Story covers with a headline type style. Lyrics are timed by tapping a large pad along with the track, then styled with entrances, finishes and fade timings.</p>
+      <h2><span class="n">05</span>One track in, a whole release out</h2>
+      <p>Each series keeps a release kit: the list of outputs it needs. By default that's a YouTube thumbnail, an Instagram post, a story cover, a square, cover art at distribution size, a SoundCloud banner, the 16:9 video and a Spotify Canvas loop. One click renders the stills into a single zip, then queues the videos one after another, saving each as it finishes.</p>
+      <p>Rendering is frame-accurate and runs entirely in the browser, so nothing is uploaded. An overview sheet shows every output side by side before anything is rendered, which is where most fixes happen. Lyrics are timed by tapping a large pad along with the track, then styled with entrances, finishes and fade timings.</p>
     </div>
     <div class="formats">
       <figure><img src="/case-study/img/frame-vertical.jpg" width="720" height="1280" loading="lazy" alt="The vertical cut: the badge over a dusk skyline, with the title and a two-line lyric caption below it."><figcaption>The 9:16 cut, rendered in the same pass as 16:9.</figcaption></figure>
@@ -158,10 +170,21 @@ footer b { color: var(--fg); }
 
   <section>
     <div class="col">
-      <h2><span class="n">06</span>Designing the tool itself</h2>
+      <h2><span class="n">06</span>Every format, set deliberately</h2>
+      <p>The same composition doesn't survive nine shapes. A headline that sits well on a thumbnail lands under the profile bar on a story, so type height is stored per format, and each one inherits a sensible default until it's changed. The headline is dragged straight on the stage, snapping to top, centre and bottom, with a safe-zone overlay showing where platform UI will cover the frame.</p>
+      <p>The SoundCloud banner got its own composition. At nearly five to one, the avatar covers its bottom-left and mobile crops the sides, so the portrait moves left of centre with the title beside it, both inside the strip that survives the crop.</p>
+    </div>
+    <figure class="square"><img src="/case-study/img/story-height.jpg" width="840" height="712" loading="lazy" alt="A story cover preview with safe zones shaded at the top and bottom and a strip on the right, the headline sitting above the bottom zone, next to the Type panel showing text size, artist gap and a Height slider at 70 percent for the story cover."><figcaption>Story cover with safe zones on. Height is set per format, and the panel names the format being edited.</figcaption></figure>
+    <figure class="banner"><img src="/case-study/img/still-banner.jpg" width="1600" height="335" loading="lazy" alt="A SoundCloud banner: the mascot badge left of centre over a glitched dusk sky, with the title glad you came on the right."><figcaption>The SoundCloud banner, composed for the avatar and the mobile crop.</figcaption></figure>
+  </section>
+
+  <section>
+    <div class="col">
+      <h2><span class="n">07</span>Designing the tool itself</h2>
       <p>The interface went through a research-led pass against established video editors. That brought a top bar with the essentials, a full-width timeline with Scene, Mood, Captions and Audio lanes (click a block to edit it), and a panel reorganised around the order you actually work through a release: release details, audio and sections, look, motion, export.</p>
       <p>A second pass made the tool more playable. The amounts you set by feel (movement, nod, glitch and texture) became knobs, and while the track plays their rings show what each setting is doing at that moment, so you can see the effect against the music rather than guess. Sections switch on pads in the timeline's mood colours, the transport gained a bar and beat readout, a beat light and level meters, and rendering starts from a record button whose ring fills as it goes.</p>
     </div>
+    <figure><img src="/case-study/img/editor.jpg" width="1600" height="1200" loading="lazy" alt="The visualiser editor during playback on the Look tab: the mascot badge on cream paper, look swatches, ink chips with hex values, layout and scene controls on the right, and below a transport with time, bar and BPM readouts above a full-width timeline with Scene, Mood, Captions and Audio lanes."><figcaption>The editor on a release, during playback. Preview, the panel for the step you are on, and the timeline lanes underneath.</figcaption></figure>
     <figure><img src="/case-study/img/controls.jpg" width="1600" height="1000" loading="lazy" alt="The editor during playback on the Motion tab: section pads for All, Quiet, Lifted and Peak, rows of knobs for movement, nod and glitch with lit rings, and a transport with a time, bar and BPM readout, a beat light and level meters."><figcaption>Motion during playback. The lit rings move with the kicks and hats; the controls take their colour from the release's look.</figcaption></figure>
     <div class="col">
       <p>A third pass reworked how each value is chosen. Colours became ink chips with their hex value and an eyedropper that picks from anywhere on screen. Text placement became a small anchor grid, fonts are picked from specimens set in the release's own title, and the mascot frames became a thumbnail grid you can drop new art straight onto. On the stage, the portrait can be dragged into place and resized with the scroll wheel. Everything that needs precision stays flat, so the artwork remains the brightest thing on screen.</p>
@@ -176,7 +199,9 @@ footer b { color: var(--fg); }
       <li>Stateless rendering: every frame is a pure function of time, so preview and export always match</li>
       <li>Section-aware scenes, motion and glitch, blended with the same timing as the character</li>
       <li>Release groups and looks for visual consistency across releases</li>
-      <li>16:9, 9:16, Spotify Canvas and still exports from one setup</li>
+      <li>A release kit per series: one click for every still and video a release needs</li>
+      <li>Auto scenes per section from a series recipe, distinct for each release</li>
+      <li>Per-format type and composition, with safe zones for platform UI</li>
       <li>Tactile controls where you play by feel: knobs with live rings, section pads, a beat readout and meters</li>
       <li>Direct manipulation where it helps: drag the portrait on the stage, drag section edges on the timeline, drop art onto a frame</li>
     </ul>
