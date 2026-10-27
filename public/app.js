@@ -274,7 +274,7 @@ async function loadSecBgs(){
 function showSecBgs(){ renderSlots(); }
 /* scene slots: whole track, quiet, lifted, peak. The selected slot receives the next background click. */
 function slotThumb(k){
-  if(k==='all'){ if(S.bgId) return bgThumb(S.bgId); if(IMGS.bg){ const c=document.createElement('canvas'); c.width=160; c.height=90; const x=c.getContext('2d'); const im=IMGS.bg, sc=Math.max(160/im.width,90/im.height); x.drawImage(im,80-im.width*sc/2,45-im.height*sc/2,im.width*sc,im.height*sc); return c.toDataURL('image/jpeg',0.7); } return ''; }
+  if(k==='all'){ if(S.bgId) return bgThumb(S.bgId); if(IMGS.bg){ const c=document.createElement('canvas'); c.width=160; c.height=90; const x=c.getContext('2d'); const im=IMGS.bg.proc ? IMGS.bg.thumb : IMGS.bg, sc=Math.max(160/im.width,90/im.height); x.drawImage(im,80-im.width*sc/2,45-im.height*sc/2,im.width*sc,im.height*sc); return c.toDataURL('image/jpeg',0.7); } return ''; }
   const id=secId(k); return id ? bgThumb(id) : '';
 }
 function showAdj(){
