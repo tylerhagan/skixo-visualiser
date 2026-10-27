@@ -181,6 +181,21 @@
           <button type="button" class="slot" data-slot="l"><span class="sthumb"></span><span class="slab">Lifted</span></button>
           <button type="button" class="slot" data-slot="p"><span class="sthumb"></span><span class="slab">Peak</span></button>
         </div>
+        <div class="autobox">
+          <div class="row wide"><label for="autoOn">Auto scenes</label><input type="checkbox" id="autoOn"></div>
+          <div id="autoOpts" class="grp" style="padding:0" hidden>
+            <p class="hint">Each release in the group picks its own scene for each section from these sets, in the look's palette. A scene you pick by hand wins.</p>
+            <div class="autogrid">
+              <label for="autoQ">Quiet<select id="autoQ"><option value="wistful">Wistful</option><option value="surreal">Surreal</option><option value="glitch">Glitch</option><option value="animated">Animated</option><option value="any">Any</option></select></label>
+              <label for="autoL">Lifted<select id="autoL"><option value="wistful">Wistful</option><option value="surreal">Surreal</option><option value="glitch">Glitch</option><option value="animated">Animated</option><option value="any">Any</option></select></label>
+              <label for="autoP">Peak<select id="autoP"><option value="wistful">Wistful</option><option value="surreal">Surreal</option><option value="glitch">Glitch</option><option value="animated">Animated</option><option value="any">Any</option></select></label>
+            </div>
+            <div class="autogrid two">
+              <label for="autoPal">Palette<select id="autoPal"><option value="look">Follow look</option><option value="dusk">Dusk</option><option value="night">Night</option><option value="riso">Riso</option><option value="sage">Sage</option></select></label>
+              <button type="button" id="autoRoll">Re-roll</button>
+            </div>
+          </div>
+        </div>
         <select id="bgTarget" hidden><option value="all">all</option><option value="q">q</option><option value="l">l</option><option value="p">p</option></select>
         <div class="filters"><select id="bgSet" aria-label="Scene set"><option value="all">All sets</option><option value="animated">Animated</option><option value="wistful">Wistful</option><option value="surreal">Surreal</option><option value="glitch">Glitch</option></select><select id="bgPal" aria-label="Palette"><option value="all">All palettes</option><option value="any">Uses the look</option><option value="dusk">Dusk</option><option value="night">Night</option><option value="riso">Riso red</option><option value="sage">Sage</option></select></div>
         <div class="bggrid" id="bgGrid"></div>
@@ -295,7 +310,7 @@
         <div class="kit" id="kitList"></div>
         <div class="row wide"><label for="kitMoment">Stills at</label><select id="kitMoment" data-seg><option value="play">Playhead</option><option value="big">Biggest moment</option></select></div>
         <p class="hint" id="kitTime"></p>
-        <div class="btns"><button class="primary" id="kitMake">Make kit</button><button id="kitStills">Stills only</button></div>
+        <div class="btns"><button class="primary" id="kitMake">Make kit</button><button id="kitStills">Stills only</button><button id="kitOverview">Overview</button></div>
         <p class="hint" id="kitNote">Stills come as one zip. Videos render one after another and save as they finish; they need a loaded track. Video size and frame rate follow the Video panel below.</p>
       </div>
     </details>
@@ -329,6 +344,12 @@
 
 <script src="vendor/mp4-muxer.js"></script>
 <script src="vendor/fflate.js"></script>
+<div id="kitSheet" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="kitSheetT">
+  <div class="sheetbox">
+    <header><h3 id="kitSheetT">Kit overview</h3><span class="hint" id="kitSheetNote"></span><span class="sp"></span><button type="button" id="kitSheetRefresh">Refresh</button><button type="button" id="kitSheetClose">Close</button></header>
+    <div class="sheetgrid" id="kitSheetGrid"></div>
+  </div>
+</div>
 <script src="app.js"></script>
 </body>
 </html>

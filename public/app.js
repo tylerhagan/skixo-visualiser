@@ -11,7 +11,7 @@ const DEFAULTS = {
   styleQ:'colour', styleL:'colour', styleP:'colour', headMove:'shrug',
   introAnim:true, clipIn:0, clipOut:1.6, clipBars:'2',
   subject:'mascot', frameShape:'circle', fSticker:0, fShadow:0.35, fOffset:0, logoTint:'original', lineQuiet:false, phonesPeak:false, echoLine:false, patch:null,
-  bgDrift:0.5, bgColour:'', glitch:0, gSort:0, gMosh:0, gMirror:0, echo:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capStyle:'outline', capColour:'ink', capWeight:'500', capCase:'typed', capAnim:'fade', capSpacing:0, capIn:0.25, capOut:0.3, capHold:6, capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
+  bgDrift:0.5, bgColour:'', glitch:0, gSort:0, gMosh:0, gMirror:0, echo:0, glitchQuiet:0.45, glitchLift:1, glitchPeak:1.6, captions:'', lyrics:'', capPos:'bottom', capStyle:'outline', capColour:'ink', capWeight:'500', capCase:'typed', capAnim:'fade', capSpacing:0, capIn:0.25, capOut:0.3, capHold:6, capSize:1, glitchTear:0.7, glitchSplit:0.7, glitchBlocks:0.5, glitchRoll:0.4, bgOpacity:1, bgBlur:0, bgId:'', bgSec:{q:'',l:'',p:''}, sceneAuto:{on:false,q:'wistful',l:'surreal',p:'glitch',pal:'look'}, bgAuto:{q:'',l:'',p:''}, rollSeed:0, bgAdj:{q:null,l:null,p:null}, mAdj:{q:{},l:{},p:{}}, bgMatch:true, ink:'#1d2023', blue:'#3d6884', paperCol:'#f8f2e4', look:'paper', artTint:'', edge:'auto'
 };
 const SLIDERS = {
   'autoPose':[['poseLow','Side light at',0,1,0.01],['peakCount','Peak moments',0,4,1],['poseHold','Hold (s)',1,30,0.5]],
@@ -63,6 +63,7 @@ function syncUI(){
   for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','kitMoment','bannerText','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP','headMove']) $(k).value = S[k];
   $('useWordmark').checked = S.useWordmark; $('lineQuiet').checked=!!S.lineQuiet; $('introAnim').checked=S.introAnim!==false; $('phonesPeak').checked=!!S.phonesPeak; $('echoLine').checked=!!S.echoLine; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
+  syncAutoUI();
   if(window.KIT_READY) kitSync();
 }
 function bindUI(){
@@ -152,7 +153,43 @@ function tintCanvas(bmp){
    accent from the most saturated mid-tones. Sets a custom look and recolours the art to suit. */
 /* background library: bg/index.json lists set, palette and name for each bundled scene */
 let BGLIB=[];
-const SECBG = {};   // section key -> bitmap
+const SECBG = {}, SECID = {};   // section key -> bitmap, and the scene id it was loaded for
+/* auto scenes: a group recipe (S.sceneAuto, shared) and per-release picks (S.bgAuto, own) drawn from the library by a seeded choice.
+   A manual pick (S.bgSec) always wins; clearing it falls back to the auto pick. */
+const SEC_KEYS = ['q','l','p'], LOOK_PAL = {paper:'any',dusk:'dusk',sage:'sage',riso:'riso',night:'night'};
+const autoOn = ()=> !!(S.sceneAuto && S.sceneAuto.on);
+const secId = k => (S.bgSec && S.bgSec[k]) || (autoOn() && S.bgAuto && S.bgAuto[k]) || '';
+function autoPal(){ const p=(S.sceneAuto&&S.sceneAuto.pal)||'look'; return p==='look' ? (LOOK_PAL[S.look]||'any') : p; }
+function autoCands(k){ const set=(S.sceneAuto&&S.sceneAuto[k])||'any', pal=autoPal();
+  return BGLIB.filter(b=>(set==='any'||b.set===set) && (pal==='any'||b.palette==='any'||b.palette===pal)); }   // animated scenes use the look's own colours, so any palette admits them
+function seedRand(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } h^=h>>>15; h=Math.imul(h,2246822507); h^=h>>>13; return (h>>>0)/4294967296; }
+function autoPick(k, dodge){
+  const c=autoCands(k); if(!c.length) return '';
+  const mine=new Set(SEC_KEYS.filter(j=>j!==k).map(secId).filter(Boolean)); if(dodge) mine.add(dodge);
+  const sib=new Set(LIB.releases.filter(r=>r.groupId===rel().groupId && r.id!==rel().id).map(r=>r.own&&r.own.bgAuto&&r.own.bgAuto[k]).filter(Boolean));
+  const tiers=[c.filter(b=>!mine.has(b.id)&&!sib.has(b.id)), c.filter(b=>!mine.has(b.id)), c.filter(b=>!sib.has(b.id)), c];
+  const pool=tiers.find(t=>t.length);
+  return pool[Math.floor(seedRand(`${rel().id}|${k}|${S.rollSeed|0}`)*pool.length)].id;
+}
+// fills missing picks and re-picks any whose set or palette no longer fits; `force` lists keys to re-pick regardless
+function autoFill(force){
+  if(!autoOn() || !LIB || !BGLIB.length) return false;
+  S.bgAuto = Object.assign({q:'',l:'',p:''}, S.bgAuto); let ch=false;
+  for(const k of SEC_KEYS){
+    const id=S.bgAuto[k], forced=force&&force.includes(k);
+    if(forced || !id || !autoCands(k).some(b=>b.id===id)){ const n=autoPick(k, forced?id:''); if(n!==id){ S.bgAuto[k]=n; ch=true; } }
+  }
+  return ch;
+}
+function autoRoll(keys){
+  S.rollSeed=(S.rollSeed|0)+1; autoFill(keys || SEC_KEYS.filter(k=>!(S.bgSec&&S.bgSec[k])));
+  persist(); loadSecBgs();
+}
+function syncAutoUI(){
+  const a=S.sceneAuto||DEFAULTS.sceneAuto; if(!$('autoOn')) return;
+  $('autoOn').checked=!!a.on; $('autoOpts').hidden=!a.on;
+  for(const k of SEC_KEYS) $('auto'+k.toUpperCase()).value=a[k]; $('autoPal').value=a.pal;
+}
 /* ---------------- procedural scenes: drawn every frame from time, palette and the track ---------------- */
 const PROCS = [{id:'proc-sky',name:'time of day sky'},{id:'proc-rays',name:'halftone rays'},{id:'proc-grooves',name:'record grooves'},{id:'proc-rain',name:'falling dashes'}];
 const hex2rgb = h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
@@ -204,7 +241,7 @@ async function loadBgSrc(id){ if(id.startsWith('proc-')){ const th=procThumb(id)
 /* each section can override opacity, blur and drift; unset values use the whole-track settings */
 const BGK = {bgOpacity:'opacity', bgBlur:'blur', bgDrift:'drift'};
 function adjFor(k){ const o=(S.bgAdj&&S.bgAdj[k])||{}; return {opacity: o.opacity ?? S.bgOpacity, blur: o.blur ?? S.bgBlur, drift: o.drift ?? S.bgDrift}; }
-function bgFor(pose){ const k=['q','l','p'][Math.min(pose,2)]; const img=(S.bgSec && S.bgSec[k] && SECBG[k]) || IMGS.bg; return img ? {img, adj:adjFor(k)} : null; }
+function bgFor(pose){ const k=['q','l','p'][Math.min(pose,2)], id=secId(k); const img=(id && SECID[k]===id && SECBG[k]) || IMGS.bg; return img ? {img, adj:adjFor(k)} : null; }
 const sameBg = (a,b)=> a && b && a.img===b.img && a.adj.opacity===b.adj.opacity && a.adj.blur===b.adj.blur && a.adj.drift===b.adj.drift;
 function drawBg(ctx,W,H,t,bg,mix){
   const alpha = bg.adj.opacity*mix; if(alpha<=0.002) return;
@@ -227,15 +264,18 @@ function blurredBg(im, blur){
   x.filter=`blur(${pad/2}px)`; x.drawImage(im,-pad,-pad,im.width+pad*2,im.height+pad*2);
   if(per.size>6) per.clear(); per.set(key,c); return c;
 }
+let SEC_TOK=0;
 async function loadSecBgs(){
-  for(const k of ['q','l','p']){ const id=S.bgSec&&S.bgSec[k]; SECBG[k] = id ? await loadBgSrc(id) : null; }
+  if(autoFill()) persist();
+  const tok=++SEC_TOK; renderSlots();
+  for(const k of SEC_KEYS){ const id=secId(k); if(id && id===SECID[k] && SECBG[k]) continue; const im = id ? await loadBgSrc(id) : null; if(tok!==SEC_TOK) return; SECBG[k]=im; SECID[k]=id; }
   showSecBgs(); requestDraw();
 }
 function showSecBgs(){ renderSlots(); }
 /* scene slots: whole track, quiet, lifted, peak. The selected slot receives the next background click. */
 function slotThumb(k){
   if(k==='all'){ if(S.bgId) return bgThumb(S.bgId); if(IMGS.bg){ const c=document.createElement('canvas'); c.width=160; c.height=90; const x=c.getContext('2d'); const im=IMGS.bg, sc=Math.max(160/im.width,90/im.height); x.drawImage(im,80-im.width*sc/2,45-im.height*sc/2,im.width*sc,im.height*sc); return c.toDataURL('image/jpeg',0.7); } return ''; }
-  const id=S.bgSec&&S.bgSec[k]; return id ? bgThumb(id) : '';
+  const id=secId(k); return id ? bgThumb(id) : '';
 }
 function showAdj(){
   const slot=$('bgTarget').value, a = slot==='all' ? {opacity:S.bgOpacity,blur:S.bgBlur,drift:S.bgDrift} : adjFor(slot);
@@ -254,22 +294,28 @@ function renderSlots(){
     const k=b.dataset.slot, url=slotThumb(k), th=b.querySelector('.sthumb');
     th.style.backgroundImage = url ? `url("${url}")` : ''; th.classList.toggle('set', !!url);
     b.setAttribute('aria-pressed', k===cur);
-    let x=b.querySelector('.x'); if(url && !x){ x=document.createElement('i'); x.className='x'; x.textContent='×'; x.title='Clear'; b.appendChild(x); } if(!url && x) x.remove();
+    const auto = k!=='all' && !!url && !(S.bgSec&&S.bgSec[k]);   // showing the auto pick
+    b.classList.toggle('auto', auto);
+    let x=b.querySelector('.x'); if(url && !auto && !x){ x=document.createElement('i'); x.className='x'; x.textContent='×'; x.title=k==='all'?'Clear':(autoOn()?'Clear (back to the auto scene)':'Clear'); b.appendChild(x); } if((!url||auto) && x) x.remove();
+    let ab=b.querySelector('.ab'), rr=b.querySelector('.rr');
+    if(auto && !ab){ ab=document.createElement('i'); ab.className='ab'; ab.textContent='Auto'; b.appendChild(ab); } if(!auto && ab) ab.remove();
+    if(auto && !rr){ rr=document.createElement('i'); rr.className='rr'; rr.textContent='↻'; rr.title='Re-roll this scene'; b.appendChild(rr); } if(!auto && rr) rr.remove();
   });
 }
 document.querySelectorAll('.slot').forEach(b=>b.addEventListener('click', e=>{
   const k=b.dataset.slot;
   if(e.target.classList.contains('x')){
     if(k==='all') $('clearBg').click();
-    else { S.bgSec=Object.assign({q:'',l:'',p:''},S.bgSec,{[k]:''}); SECBG[k]=null; persist(); requestDraw(); }
+    else { S.bgSec=Object.assign({q:'',l:'',p:''},S.bgSec,{[k]:''}); persist(); loadSecBgs(); }
     renderSlots(); return;
   }
+  if(e.target.classList.contains('rr')){ autoRoll([k]); setStatus('New auto scene'); return; }
   $('bgTarget').value=k; markBg();
 }));
 async function pickBg(id, fromUser){
   const it=BGLIB.find(b=>b.id===id); if(!it) return;
   const target = fromUser ? $('bgTarget').value : 'all';
-  if(target!=='all'){ S.bgSec = Object.assign({q:'',l:'',p:''}, S.bgSec, {[target]:id}); SECBG[target] = await loadBgSrc(id); markBg(); persist(); requestDraw(); return; }
+  if(target!=='all'){ S.bgSec = Object.assign({q:'',l:'',p:''}, S.bgSec, {[target]:id}); SECBG[target] = await loadBgSrc(id); SECID[target]=id; markBg(); persist(); requestDraw(); return; }
   IMGS.bg = await loadBgSrc(id); S.bgId=id; setNote('bg', `${it.set} · ${it.palette} · ${it.name}`);
   if(fromUser && S.bgMatch) matchBackground(); else persist();
   markBg(); requestDraw();
@@ -284,6 +330,9 @@ function renderBgGrid(){
 }
 fetch('bg/index.json').then(r=>r.json()).then(list=>{ BGLIB=PROCS.map(p=>({id:p.id,set:'animated',palette:'any',name:p.name})).concat(list); renderBgGrid(); if(S.bgId) pickBg(S.bgId,false); loadSecBgs(); }).catch(()=>{});
 $('clearSecBgs').addEventListener('click', ()=>{ S.bgSec={q:'',l:'',p:''}; loadSecBgs(); persist(); });
+$('autoOn').addEventListener('change', e=>{ S.sceneAuto=Object.assign({},S.sceneAuto,{on:e.target.checked}); syncAutoUI(); persist(); loadSecBgs(); setStatus(e.target.checked?'Auto scenes on':'Auto scenes off'); });
+for(const [id,k] of [['autoQ','q'],['autoL','l'],['autoP','p'],['autoPal','pal']]) $(id).addEventListener('change', e=>{ S.sceneAuto=Object.assign({},S.sceneAuto,{[k]:e.target.value}); persist(); loadSecBgs(); });
+$('autoRoll').addEventListener('click', ()=>{ autoRoll(); setStatus('Re-rolled the auto scenes'); });
 $('bgSet').addEventListener('change', renderBgGrid); $('bgPal').addEventListener('change', renderBgGrid);
 $('bgMatch').addEventListener('change', e=>{ S.bgMatch=e.target.checked; persist(); });
 
@@ -306,7 +355,7 @@ function matchBackground(){
 function applyLook(id){
   const L = LOOKS.find(l=>l.id===id); if(!L) return;
   Object.assign(S, {paperCol:L.paperCol, ink:L.ink, blue:L.blue, artTint:L.artTint, look:L.id});
-  syncUI(); refreshArt(); persist();
+  syncUI(); refreshArt(); persist(); if(autoOn() && BGLIB.length) loadSecBgs();   // picks that no longer fit the look's palette are swapped
 }
 function markLook(){ document.querySelectorAll('.look').forEach(b=>b.setAttribute('aria-pressed', b.dataset.id===S.look)); }
 (function buildLooks(){
@@ -1410,7 +1459,7 @@ function stop(){ if(srcNode){ try{srcNode.stop();}catch(e){} srcNode.disconnect(
 function setIcon(){ $('playicon').innerHTML = playing ? '<path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/>' : '<path d="M3 1.5v13l11-6.5z"/>'; $('play').setAttribute('aria-label', playing?'Pause':'Play'); }
 function seek(t){ const was=playing; stop(); playhead=Math.max(0,Math.min(buffer?buffer.duration:0,t)); if(was) play(); else requestDraw(); }
 $('play').addEventListener('click', ()=> playing ? (stop(), requestDraw()) : play());
-document.addEventListener('keydown', e=>{ if(e.code==='Space' && !/INPUT|TEXTAREA|SELECT|BUTTON/.test(e.target.tagName)){ e.preventDefault(); $('play').click(); } });
+document.addEventListener('keydown', e=>{ if(e.code==='Space' && $('kitSheet').hidden && !/INPUT|TEXTAREA|SELECT|BUTTON/.test(e.target.tagName)){ e.preventDefault(); $('play').click(); } });
 function fmtTime(t, frac){ t=Math.max(0,t); const m=Math.floor(t/60), s=t-m*60; return frac ? `${m}:${s.toFixed(1).padStart(4,'0')}` : `${m}:${String(Math.floor(s)).padStart(2,'0')}`; }
 
 /* ---------------- timeline ---------------- */
@@ -1545,8 +1594,10 @@ try{ $('safeZones').checked = localStorage.getItem('skixo-vis-safe')==='1'; }cat
 $('safeZones').addEventListener('change',()=>{ try{ localStorage.setItem('skixo-vis-safe', $('safeZones').checked?'1':'0'); }catch(e){} requestDraw(); });
 ['stillText','stillHeadline'].forEach(id=>$(id).addEventListener('input', ()=>requestDraw()));
 // one still, drawn exactly as the preview would: #stillSize is borrowed for the per-format headline logic (fmtKey) and put back
-function stillCanvas(size,t){
-  const [W,H] = STILL_DIMS[size], keep = $('stillSize').value;
+// `long` draws the same layout smaller (the frame is built from the short side, so nothing moves) for previews
+function stillCanvas(size,t,long){
+  let [W,H] = STILL_DIMS[size]; const keep = $('stillSize').value;
+  if(long && long<Math.max(W,H)){ const k=long/Math.max(W,H); W=Math.round(W*k); H=Math.round(H*k); }
   const c=document.createElement('canvas'); c.width=W; c.height=H;
   $('stillSize').value = size; RENDER_STILL=true;
   try{ frame(c.getContext('2d'),W,H,t); } finally { RENDER_STILL=false; $('stillSize').value = keep; }
@@ -1761,6 +1812,57 @@ async function makeKit(withVideos){
 $('kitMake').addEventListener('click', ()=>makeKit(true));
 $('kitStills').addEventListener('click', ()=>makeKit(false));
 ['res','fps'].forEach(id=>$(id).addEventListener('change', kitSync));
+/* overview: every ticked output, small, at the kit moment */
+let kitSheetTok = 0, kitSheetFrom = null;
+const KIT_LONG = {cover:800, banner:1100};
+const kitSheet = ()=> $('kitSheet');
+async function kitOverview(){
+  const sh = kitSheet(), grid = $('kitSheetGrid'), tok = ++kitSheetTok;
+  const on = kitSel(), list = KIT.filter(o=>on.includes(o.id)), m = kitTimeLine();
+  $('kitSheetNote').textContent = `At ${fmtTime(m.t)}` + (m.note ? ` (${m.note})` : '');
+  grid.innerHTML = '';
+  if(!list.length){ grid.innerHTML = '<p class="hint">Nothing ticked. Tick outputs in the Release kit list.</p>'; return; }
+  const tiles = list.map(o=>{
+    const [w,h] = kitDims(o), el = document.createElement('figure'); el.className = 'ktile' + (w/h>2.5 ? ' wide' : '');
+    el.innerHTML = `<div class="kthumb" style="aspect-ratio:${w}/${h}"><canvas></canvas><i class="kwait">Rendering</i></div><figcaption><span class="kn"><b>${esc(o.name)}</b><span>${w}×${h}${o.kind==='video'?'<em class="ktag">Video</em>':''}</span></span><button type="button" aria-label="Edit ${esc(o.name)}">Edit</button></figcaption>`;
+    el.querySelector('button').addEventListener('click', ()=>{ closeKitSheet(true); kitEdit(o); });
+    grid.appendChild(el); return {o, el, w, h};
+  });
+  try{ await ensureFont(); }catch(e){}
+  for(const {o,el,w,h} of tiles){
+    await new Promise(r=>setTimeout(r,16));   // let the sheet paint and the UI breathe between tiles
+    if(tok!==kitSheetTok || sh.hidden) return;
+    let src;
+    if(o.kind==='still') src = stillCanvas(o.size, m.t, KIT_LONG[o.id]||640);
+    else { const k=480/Math.max(w,h); src=document.createElement('canvas'); src.width=Math.round(w*k); src.height=Math.round(h*k); frame(src.getContext('2d'),src.width,src.height,m.t); }
+    const k = Math.min(1, 480/Math.max(src.width,src.height)), c = el.querySelector('canvas');
+    c.width = Math.round(src.width*k); c.height = Math.round(src.height*k);
+    const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(src,0,0,c.width,c.height);
+    const wt = el.querySelector('.kwait'); if(wt) wt.remove();
+  }
+}
+function openKitSheet(){
+  kitSheetFrom = document.activeElement; kitSheet().hidden = false; $('kitSheetClose').focus(); kitOverview();
+}
+function closeKitSheet(skipFocus){
+  kitSheetTok++; kitSheet().hidden = true;
+  if(!skipFocus && kitSheetFrom && kitSheetFrom.focus) kitSheetFrom.focus();
+}
+$('kitOverview').addEventListener('click', openKitSheet);
+$('kitSheetRefresh').addEventListener('click', kitOverview);
+$('kitSheetClose').addEventListener('click', ()=>closeKitSheet());
+kitSheet().addEventListener('mousedown', e=>{ if(e.target===kitSheet()) closeKitSheet(); });
+document.addEventListener('keydown', e=>{
+  if(kitSheet().hidden) return;
+  if(e.key==='Escape'){ e.preventDefault(); closeKitSheet(); return; }
+  if(e.key==='Tab'){   // keep focus inside the sheet
+    const f=[...kitSheet().querySelectorAll('button:not([disabled])')]; if(!f.length) return;
+    const first=f[0], last=f[f.length-1], a=document.activeElement;
+    if(!kitSheet().contains(a)){ e.preventDefault(); first.focus(); }
+    else if(e.shiftKey && a===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && a===last){ e.preventDefault(); first.focus(); }
+  }
+});
 kitBuild(); window.KIT_READY = true; kitSync();
 
 /* ---------------- remembered files (IndexedDB, this browser only) ---------------- */
@@ -1781,7 +1883,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['headMove','styleQ','styleL','styleP','introAnim','clipIn','clipOut','clipBars','subject','frameShape','fSticker','fShadow','fOffset','logoTint','lineQuiet','phonesPeak','echoLine','look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','textY','bannerText','kit','headGap','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','sceneAuto','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','textY','bannerText','kit','headGap','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
@@ -2083,7 +2185,7 @@ syncUI(); bindUI(); setAspect(); markLook();
   try{
     await Promise.all([document.fonts.load('500 20px "Libre Franklin"').catch(()=>{}), loadWordmark()]);
     makeClouds(S.blue); requestDraw();
-    await loadLibrary(); await loadArtwork(); refreshArt(); $('fontCustomRow').hidden = S.font!=='custom'; ensureFont(); if(S.bgId && BGLIB.length) pickBg(S.bgId,false);
+    await loadLibrary(); await loadArtwork(); refreshArt(); $('fontCustomRow').hidden = S.font!=='custom'; ensureFont(); if(S.bgId && BGLIB.length) pickBg(S.bgId,false); if(BGLIB.length) loadSecBgs();
     const track = await store.get('audio-'+LIB.current);
     if(track && track.blob){ $('trackName').textContent = track.name; setNote('audio', track.name); await loadAudio(track.blob); }
     else setStatus('Drop a track anywhere to start');
@@ -2235,7 +2337,7 @@ $('patchStore').addEventListener('click',()=>{ const b=$('patchStore'); b.setAtt
 /* ---------------- shuffle: a new look, scene, texture and glitch mix within taste ---------------- */
 let SHUF_PREV=null;
 $('shuffle').addEventListener('click',()=>{
-  if(!SHUF_PREV) SHUF_PREV = sharedSnap();
+  if(!SHUF_PREV) SHUF_PREV = Object.assign(sharedSnap(), JSON.parse(JSON.stringify({bgAuto:S.bgAuto, rollSeed:S.rollSeed|0})));
   const r=(a,b)=>Math.round((a+Math.random()*(b-a))*100)/100, pick=a=>a[Math.floor(Math.random()*a.length)];
   const L=pick(LOOKS), pal={paper:'any',dusk:'dusk',sage:'sage',riso:'riso',night:'night'}[L.id];
   const scenes=BGLIB.filter(b=>b.palette===pal || (pal==='any' && b.set==='animated'));
@@ -2246,6 +2348,7 @@ $('shuffle').addEventListener('click',()=>{
     misprint:r(0.1,0.5), rings:r(0.2,0.7), spectrum:r(0.1,0.6), echo: Math.random()<0.3 ? r(0.2,0.5) : 0,
     glitch: glitchy ? r(0.2,0.6) : 0, glitchTear:r(0,0.8), glitchSplit:r(0,0.8), glitchBlocks:r(0,0.6), glitchRoll:r(0,0.5), gSort:Math.random()<0.3?r(0.2,0.6):0, gMirror:Math.random()<0.2?0.5:0,
     fOffset: Math.random()<0.4 ? r(0.2,0.7) : 0, fSticker: S.frameShape==='cutout' ? r(0,0.7) : S.fSticker, bgBlur: Math.random()<0.3 ? r(0.2,0.6) : 0, bgDrift:r(0.2,0.8) });
+  if(autoOn()) autoRoll();   // auto stays as it was; its scenes follow the new look
   markLook(); markPatches(); $('unshuffle').hidden=false; setStatus(`Shuffled: ${L.name}${sc?', new scene':''}`);
 });
 $('unshuffle').addEventListener('click',()=>{ if(!SHUF_PREV) return; applySnap(SHUF_PREV); SHUF_PREV=null; $('unshuffle').hidden=true; markLook(); markPatches(); setStatus('Back to the look before shuffling'); });
