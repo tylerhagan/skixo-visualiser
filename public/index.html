@@ -290,6 +290,16 @@
       </div>
     </details>
     <details open data-tab="export">
+      <summary>Release kit</summary>
+      <div class="grp">
+        <div class="kit" id="kitList"></div>
+        <div class="row wide"><label for="kitMoment">Stills at</label><select id="kitMoment" data-seg><option value="play">Playhead</option><option value="big">Biggest moment</option></select></div>
+        <p class="hint" id="kitTime"></p>
+        <div class="btns"><button class="primary" id="kitMake">Make kit</button><button id="kitStills">Stills only</button></div>
+        <p class="hint" id="kitNote">Stills come as one zip. Videos render one after another and save as they finish; they need a loaded track. Video size and frame rate follow the Video panel below.</p>
+      </div>
+    </details>
+    <details open data-tab="export">
       <summary>Video</summary>
       <div class="grp">
         <div class="row wide"><label for="res">Size</label><select id="res" data-seg><option value="1080">1080p (1920×1080)</option><option value="1440">1440p (2560×1440)</option><option value="720">720p, quick test</option></select></div>
@@ -304,7 +314,7 @@
     <details open data-tab="export">
       <summary>Stills</summary>
       <div class="grp">
-        <div class="row wide"><label for="stillSize">Size</label><select id="stillSize" data-seg><option value="yt">YouTube thumbnail (16:9)</option><option value="ig">Instagram post (4:5)</option><option value="story">Story / Reel cover (9:16)</option><option value="square">Square (1:1)</option></select></div>
+        <div class="row wide"><label for="stillSize">Size</label><select id="stillSize" data-seg><option value="yt">YouTube thumbnail (16:9)</option><option value="ig">Instagram post (4:5)</option><option value="story">Story / Reel cover (9:16)</option><option value="square">Square (1:1)</option><option value="cover">Cover art (1:1, 3000)</option><option value="banner">SoundCloud banner (2480×520)</option></select></div>
         <div class="row wide"><label for="stillText">Text</label><select id="stillText" data-seg><option value="same">Same as video</option><option value="headline">Headline, centre</option><option value="headline-top">Headline, top</option><option value="headline-bottom">Headline, bottom</option><option value="none">No text</option></select></div>
         <div class="row wide"><label for="stillHeadline">Headline</label><input type="text" id="stillHeadline" placeholder="Uses the title"></div>
         <div class="row wide"><label for="stillArtist">Artist on stills</label><input type="checkbox" id="stillArtist"></div>
@@ -317,6 +327,7 @@
 </div>
 
 <script src="vendor/mp4-muxer.js"></script>
+<script src="vendor/fflate.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
