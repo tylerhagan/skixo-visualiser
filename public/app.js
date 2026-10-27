@@ -7,7 +7,7 @@ const DEFAULTS = {
   rings:0.45, misprint:0.3, spectrum:0.4,
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
-  title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
+  title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, textY:{}, headGap:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
   styleQ:'colour', styleL:'colour', styleP:'colour', headMove:'shrug',
   introAnim:true, clipIn:0, clipOut:1.6, clipBars:'2',
   subject:'mascot', frameShape:'circle', fSticker:0, fShadow:0.35, fOffset:0, logoTint:'original', lineQuiet:false, phonesPeak:false, echoLine:false, patch:null,
@@ -24,7 +24,7 @@ const SLIDERS = {
   'g-nod':[['nod','Nod depth',0,1,0.01],['nodGate','Nod from energy',0,1,0.01]],
   'g-clip':[['clipIn','Clip starts (s)',0,4,0.05],['clipOut','Clip ends (s)',0.3,4,0.05]],
   'g-finish':[['fSticker','Sticker edge',0,1,0.01],['fShadow','Shadow',0,1,0.01],['fOffset','Riso offset',0,1,0.01]],
-  'g-typeS':[['textScale','Text size',0.5,2.5,0.05]],
+  'g-typeS':[['textScale','Text size',0.5,2.5,0.05],['headGap','Artist gap',0.4,2.5,0.05]],
   'g-caps':[['capSize','Size',0.5,2.5,0.05],['capSpacing','Letter spacing',-0.05,0.3,0.01],['capIn','Fade in (s)',0,1.5,0.05],['capOut','Fade out (s)',0,1.5,0.05],['capHold','Max hold (s)',1,15,0.5]],
   'g-glitch':[['glitch','Glitch amount',0,1,0.01],
     ['glitchTear','Tearing',0,1,0.01],['glitchSplit','Colour split',0,1,0.01],['glitchBlocks','Block shifts',0,1,0.01],['glitchRoll','VHS roll',0,1,0.01],
@@ -1278,6 +1278,10 @@ async function ensureFont(){
   try{ await document.fonts.load(`600 40px "${f}"`); await document.fonts.load(`400 40px "${f}"`); }catch(e){}
   requestDraw();
 }
+const FMT_NAMES = {v16:'Video 16:9', v9:'Video 9:16 and Canvas', 'still-yt':'YouTube thumbnail', 'still-ig':'Post 4:5', 'still-story':'Story cover', 'still-square':'Square'};
+function fmtKey(W,H){ if(RENDER_STILL) return 'still-'+$('stillSize').value; return H>W ? 'v9' : 'v16'; }
+const HEAD_PRESET = {'headline-top':0.16, headline:0.5, 'headline-bottom':0.82};
+let HEAD_BOX = null, TEXT_GUIDE = null;   // HEAD_BOX: stage-only hit box of the headline, in canvas pixels
 function drawHeadline(ctx,W,H,U,mode){
   const lc = s => S.lowercase ? s.toLowerCase().replace(/skixo/g,'skixO') : s;
   const typed = RENDER_STILL && S.stillHeadline;   // a typed headline keeps its own case
@@ -1287,18 +1291,20 @@ function drawHeadline(ctx,W,H,U,mode){
   const font = px => `600 ${px}px ${FONT()}`;
   ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`;
   while(ts>U*0.04 && ctx.measureText(title).width > W*0.9){ ts*=0.92; ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`; }
-  const y = mode==='headline-top' ? H*0.16 : mode==='headline-bottom' ? H*0.82 : H*0.5;
+  const ov = S.textY && S.textY[fmtKey(W,H)], y = H*(typeof ov==='number' ? Math.max(0.04,Math.min(0.96,ov)) : (HEAD_PRESET[mode]||0.5));
   const as = ts*0.3, showA = RENDER_STILL ? !!S.stillArtist : S.showArtist!==false;
   const stroke=(txt,x,yy,w)=>{ ctx.strokeStyle=S.paperCol; ctx.lineWidth=w; ctx.strokeText(txt,x,yy); ctx.fillText(txt,x,yy); };
   ctx.fillStyle=S.ink;
+  const tw = title ? ctx.measureText(title).width : 0; let aw = 0, ay = y;
   if(title) stroke(title, W/2, y, ts*0.16);
   if(showA){
-    const ay = y + ts*0.62 + as*0.6;
+    ay = y + (ts*0.62 + as*0.6)*(S.headGap==null ? 1 : S.headGap);
     if(S.useWordmark && wordmarkImg){
       const h=as*1.4, w=h*wordmarkImg.naturalWidth/wordmarkImg.naturalHeight;
-      ctx.shadowColor=S.paperCol; ctx.shadowBlur=as*0.5; ctx.drawImage(wordmarkImg, W/2-w/2, ay-h/2, w, h); ctx.shadowBlur=0;
-    } else { ctx.font=`500 ${as}px ${FONT()}`; ctx.letterSpacing=`${as*0.14}px`; ctx.fillStyle=S.blue; stroke(S.artist||'', W/2, ay, as*0.3); }
+      aw=w; ctx.shadowColor=S.paperCol; ctx.shadowBlur=as*0.5; ctx.drawImage(wordmarkImg, W/2-w/2, ay-h/2, w, h); ctx.shadowBlur=0;
+    } else { ctx.font=`500 ${as}px ${FONT()}`; ctx.letterSpacing=`${as*0.14}px`; ctx.fillStyle=S.blue; aw=ctx.measureText(S.artist||'').width; stroke(S.artist||'', W/2, ay, as*0.3); }
   }
+  if(ctx===sctx){ const bw=Math.max(tw,aw,U*0.1), top=title ? y-ts*0.6 : ay-as*0.8, bot=showA ? ay+as*0.8 : y+ts*0.6; HEAD_BOX={x:W/2-bw/2, y:top, w:bw, h:Math.max(bot-top,as), W, H}; }
   ctx.restore(); ctx.letterSpacing='0px';
 }
 function drawText(ctx,W,H,U,tall,t){
@@ -1355,14 +1361,26 @@ function setAspect(){
   stage.width = tall?720:1280; stage.height = tall?1280:720;
   if($('stillPreview') && $('stillPreview').checked){ const [w,h]=STILL_DIMS[$('stillSize').value]; const k=Math.min(1280/w,1280/h); stage.width=Math.round(w*k); stage.height=Math.round(h*k); }
   $('stagewrap').classList.toggle('tall', tall);
+  if(window.LOOKUI_READY) syncHeightUI();
   requestDraw();
 }
 function now(){ return playing ? Math.min(buffer.duration, actx.currentTime - startedAt) : playhead; }
 function requestDraw(){ if(!drawPending && !playing){ drawPending=true; requestAnimationFrame(()=>{ drawPending=false; render(); }); } }
+function drawOverlays(c,W,H){   // preview-only guides, never part of an export
+  if(TEXT_GUIDE!=null){ c.save(); c.strokeStyle='#ff3d8b'; c.lineWidth=1; c.setLineDash([6,4]); c.beginPath(); c.moveTo(0,Math.round(H*TEXT_GUIDE)+0.5); c.lineTo(W,Math.round(H*TEXT_GUIDE)+0.5); c.stroke(); c.restore(); }
+  if(!$('safeZones') || !$('safeZones').checked) return;
+  const still = !!$('stillPreview').checked, sz = $('stillSize').value, nine = still ? sz==='story' : H>W;
+  c.save(); c.fillStyle='rgba(0,0,0,0.28)'; c.strokeStyle='rgba(255,255,255,0.7)'; c.lineWidth=1; c.setLineDash([5,4]);
+  const zone=(x,y,w,h)=>{ c.fillRect(x,y,w,h); c.strokeRect(Math.round(x)+0.5,Math.round(y)+0.5,Math.round(w)-1,Math.round(h)-1); };
+  if(nine){ zone(0,0,W,H*0.14); zone(0,H*0.78,W,H*0.22); zone(W*0.88,H*0.55,W*0.12,H*0.23); }
+  else if(still && sz==='ig'){ const cw=H*0.75, x=(W-cw)/2; c.fillRect(0,0,x,H); c.fillRect(W-x,0,x,H); c.beginPath(); c.moveTo(Math.round(x)+0.5,0); c.lineTo(Math.round(x)+0.5,H); c.moveTo(Math.round(W-x)+0.5,0); c.lineTo(Math.round(W-x)+0.5,H); c.stroke(); }
+  c.restore();
+}
 function render(){
   const t = now();
-  RENDER_STILL = !!($('stillPreview') && $('stillPreview').checked);
+  RENDER_STILL = !!($('stillPreview') && $('stillPreview').checked); HEAD_BOX = null;
   try{ frame(sctx, stage.width, stage.height, t); } finally { RENDER_STILL=false; }
+  drawOverlays(sctx, stage.width, stage.height);
   $('time').textContent = `${fmtTime(t)} / ${fmtTime(buffer?buffer.duration:0)}`;
   drawPlayhead(t);
 }
@@ -1513,6 +1531,8 @@ async function saveBlob(blob, name){
   setStatus('Saved '+name);
 }
 ['stillPreview','stillSize'].forEach(id=>$(id).addEventListener('change', ()=>setAspect()));
+try{ $('safeZones').checked = localStorage.getItem('skixo-vis-safe')==='1'; }catch(e){}
+$('safeZones').addEventListener('change',()=>{ try{ localStorage.setItem('skixo-vis-safe', $('safeZones').checked?'1':'0'); }catch(e){} requestDraw(); });
 ['stillText','stillHeadline'].forEach(id=>$(id).addEventListener('input', ()=>requestDraw()));
 $('saveStill').addEventListener('click', async ()=>{
   await ensureFont();
@@ -1634,7 +1654,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['headMove','styleQ','styleL','styleP','introAnim','clipIn','clipOut','clipBars','subject','frameShape','fSticker','fShadow','fOffset','logoTint','lineQuiet','phonesPeak','echoLine','look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','textY','headGap','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
@@ -1960,7 +1980,19 @@ const ANCHOR=[['top-left','top-centre','top-right'],[null,null,null],['bottom-le
 const HEAD=['headline-top','headline','headline-bottom'];
 const ANCHOR_NAMES=['Top','Middle','Bottom'], COL_NAMES=['left','centre','right'];
 (function(){ const g=$('anchor'); for(let r=0;r<3;r++) for(let c=0;c<3;c++){ const b=document.createElement('button'); b.type='button'; b.dataset.r=r; b.dataset.c=c; b.setAttribute('aria-label',`${ANCHOR_NAMES[r]} ${COL_NAMES[c]}`); g.appendChild(b);
-  b.addEventListener('click',()=>{ const st=textStyle(); const v = st==='headline' ? (c===1 ? HEAD[r] : null) : ANCHOR[r][c]; if(v){ setInput('textPos',v); syncLookUI(); } }); } })();
+  b.addEventListener('click',()=>{ const st=textStyle(); const v = st==='headline' ? (c===1 ? HEAD[r] : null) : ANCHOR[r][c]; if(v){ if(st==='headline') setTextY(uiKey(),null,true); setInput('textPos',v); syncLookUI(); } }); } })();
+// per-format headline height: the override lives in S.textY[format]; the preset applies until one is set
+const uiStill = ()=> !!$('stillPreview').checked;
+const uiKey = ()=> uiStill() ? 'still-'+$('stillSize').value : (S.aspect==='9:16' ? 'v9' : 'v16');
+const uiMode = ()=> (uiStill() && S.stillText!=='same') ? S.stillText : (S.textPos||'');
+const uiHeadline = ()=> uiMode().startsWith('headline');
+const headY = ()=>{ const o=(S.textY||{})[uiKey()]; return typeof o==='number' ? Math.max(0.04,Math.min(0.96,o)) : (HEAD_PRESET[uiMode()]||0.5); };
+function setTextY(key,v,quiet){ const o=Object.assign({},S.textY); if(v==null){ if(!(key in o)) return; delete o[key]; } else o[key]=Math.round(v*1000)/1000; S.textY=o; persist(); syncHeightUI(); if(!quiet) requestDraw(); }
+function syncHeightUI(){ const row=$('heightRow'); if(!row) return; const on=uiHeadline(); row.hidden=!on; if(!on) return;
+  const k=uiKey(), v=headY(), set=typeof (S.textY||{})[k]==='number';
+  $('heightFmt').textContent=' · '+FMT_NAMES[k]; $('textYr').value=v; $('textYr-o').textContent=(v*100).toFixed(1)+'%'; $('textYReset').disabled=!set; }
+$('textYr').addEventListener('input',e=>{ setTextY(uiKey(),+e.target.value); });
+$('textYReset').addEventListener('click',()=>setTextY(uiKey(),null));
 function textStyle(){ const v=S.textPos||'bottom-left'; return v==='off' ? 'off' : v.startsWith('headline') ? 'headline' : 'label'; }
 document.querySelectorAll('#textStyle button').forEach(b=>b.addEventListener('click',()=>{ const want=b.dataset.v, cur=textStyle(); if(want===cur) return;
   const v=S.textPos||'', top=v.includes('top'), bottom=v.includes('bottom')||v==='off';
@@ -1990,16 +2022,25 @@ document.querySelectorAll('.ftile').forEach(t=>{ const slot=t.dataset.slot;
   t.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); t.classList.remove('over'); $('app').classList.remove('drop'); const f=e.dataTransfer.files[0]; if(f) takeFile(f,slot); });
 });
 for(const k of Object.keys(IMGS)){ const src = RAW[k] || (IMGS[k] && (IMGS[k]._src||IMGS[k])); if(src && src.width) drawTile(k, src); }
-// stage handles: drag the portrait to move it, scroll to resize, double-click to reset
-(function(){ const st=$('stage'), wrap=$('stagewrap'); let sd=null;
-  const hint=document.createElement('div'); hint.className='stagehint'; hint.textContent='Drag to move · scroll to resize · double-click to reset'; wrap.appendChild(hint);
+// stage handles: drag the portrait to move it, scroll to resize, double-click to reset; over the headline they set its height and size instead
+(function(){ const st=$('stage'), wrap=$('stagewrap'); let sd=null, td=null;
+  const hint=document.createElement('div'); hint.className='stagehint'; hint.textContent='Drag to move · drag the headline to set its height · scroll to resize · double-click to reset'; wrap.appendChild(hint);
   const on=()=>S.layout!=='wallpaper';
   const setR=(k,v)=>{ const i=$(k); setInput(k, Math.round(Math.max(+i.min,Math.min(+i.max,v))*1000)/1000); };
-  st.addEventListener('pointerdown',e=>{ if(e.button||!on()) return; e.preventDefault(); sd={y:e.clientY,v:+S.portraitY||0}; st.setPointerCapture(e.pointerId); wrap.classList.add('grab'); });
-  st.addEventListener('pointermove',e=>{ if(!sd) return; setR('portraitY', sd.v + (e.clientY-sd.y)/st.getBoundingClientRect().height); });
-  const up=()=>{ sd=null; wrap.classList.remove('grab'); }; st.addEventListener('pointerup',up); st.addEventListener('pointercancel',up);
-  st.addEventListener('wheel',e=>{ if(!on()) return; e.preventDefault(); setR('badgeSize', S.badgeSize - Math.sign(e.deltaY)*(e.shiftKey?0.0025:0.01)); },{passive:false});
-  st.addEventListener('dblclick',()=>{ if(!on()) return; setR('portraitY',0); setR('badgeSize',DEFAULTS.badgeSize); });
+  const onHead=e=>{ const b=HEAD_BOX; if(!b || !uiHeadline()) return false; const r=st.getBoundingClientRect(), x=(e.clientX-r.left)*st.width/r.width, y=(e.clientY-r.top)*st.height/r.height, p=b.H*0.02;
+    return x>=b.x-p && x<=b.x+b.w+p && y>=b.y-p && y<=b.y+b.h+p; };
+  st.addEventListener('pointerdown',e=>{ if(e.button) return;
+    if(onHead(e)){ e.preventDefault(); td={y:e.clientY,v:headY()}; st.setPointerCapture(e.pointerId); wrap.classList.add('grab'); st.style.cursor='ns-resize'; return; }
+    if(!on()) return; e.preventDefault(); sd={y:e.clientY,v:+S.portraitY||0}; st.setPointerCapture(e.pointerId); wrap.classList.add('grab'); });
+  st.addEventListener('pointermove',e=>{
+    if(td){ let v=Math.max(0.04,Math.min(0.96,td.v+(e.clientY-td.y)/st.getBoundingClientRect().height)); TEXT_GUIDE=null;
+      if(!e.altKey) for(const s of [0.16,0.5,0.82]) if(Math.abs(v-s)<0.012){ v=s; TEXT_GUIDE=s; break; }
+      setTextY(uiKey(),v); return; }
+    if(sd){ setR('portraitY', sd.v + (e.clientY-sd.y)/st.getBoundingClientRect().height); return; }
+    st.style.cursor = onHead(e) ? 'ns-resize' : ''; });
+  const up=()=>{ const had=td; sd=null; td=null; TEXT_GUIDE=null; wrap.classList.remove('grab'); if(had) requestDraw(); }; st.addEventListener('pointerup',up); st.addEventListener('pointercancel',up);
+  st.addEventListener('wheel',e=>{ if(onHead(e)){ e.preventDefault(); setR('textScale', (S.textScale||1) - Math.sign(e.deltaY)*(e.shiftKey?0.01:0.05)); return; } if(!on()) return; e.preventDefault(); setR('badgeSize', S.badgeSize - Math.sign(e.deltaY)*(e.shiftKey?0.0025:0.01)); },{passive:false});
+  st.addEventListener('dblclick',e=>{ if(onHead(e)){ setTextY(uiKey(),null); return; } if(!on()) return; setR('portraitY',0); setR('badgeSize',DEFAULTS.badgeSize); });
   wrap.classList.add('handles');
 })();
 // tap tempo
@@ -2016,6 +2057,7 @@ function syncLookUI(){
   document.querySelectorAll('#textStyle button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===st));
   document.querySelectorAll('#anchor button').forEach(b=>{ const r=+b.dataset.r, c=+b.dataset.c, val = st==='headline' ? (c===1?HEAD[r]:null) : st==='label' ? ANCHOR[r][c] : null;
     b.disabled=!val; b.setAttribute('aria-pressed', !!val && val===v); });
+  syncHeightUI();
   const f=S.font==='custom' ? (S.fontCustom||'') : S.font;
   $('fontSample').textContent=fontSampleText(); $('fontSample').style.fontFamily = f ? `'${f}', var(--ui)` : 'var(--ui)'; $('fontName').textContent = S.font==='custom' ? (S.fontCustom||'Installed font') : S.font;
   document.querySelectorAll('#fontList [data-f]').forEach(b=>{ b.setAttribute('aria-selected', b.dataset.f===S.font); b.querySelector('.fsample').textContent = b.dataset.f==='custom' ? 'Installed font…' : fontSampleText(); });
