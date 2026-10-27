@@ -7,7 +7,7 @@ const DEFAULTS = {
   rings:0.45, misprint:0.3, spectrum:0.4,
   dashes:0.55, dashSpeed:0.45, clouds:0.6, cloudSpeed:0.35, light:0.35,
   grain:0.5, vignette:0.35, fadeIn:2.5, fadeOut:4,
-  title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, textY:{}, headGap:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'same', stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
+  title:'glad you came', artist:'the skixO service', credit:'', textPos:'bottom-left', textScale:1, textY:{}, headGap:1, font:'Libre Franklin', fontCustom:'', showTitle:true, showArtist:true, stillText:'auto', stillTextV:0, stillHeadline:'', stillArtist:false, useWordmark:false, lowercase:true,
   styleQ:'colour', styleL:'colour', styleP:'colour', headMove:'shrug',
   introAnim:true, clipIn:0, clipOut:1.6, clipBars:'2',
   subject:'mascot', frameShape:'circle', fSticker:0, fShadow:0.35, fOffset:0, logoTint:'original', lineQuiet:false, phonesPeak:false, echoLine:false, patch:null,
@@ -33,7 +33,17 @@ const SLIDERS = {
     ['light','Window light',0,1,0.01],['grain','Print grain',0,1,0.01],['vignette','Vignette',0,1,0.01]]
 };
 let S = Object.assign({}, DEFAULTS);
+// stills used to default to 'same' (video label type); move stored 'same' to 'auto' once, then leave later choices alone
+function migrateS(){ if(S.stillTextV!==2){ if(S.stillText==='same') S.stillText='auto'; S.stillTextV=2; } }
+// stills: 'auto' is headline type at a per-format height that clears the portrait's face and platform UI; per-format S.textY still wins
+const STILL_AUTO_Y = {'still-yt':0.82,'still-ig':0.84,'still-story':0.7,'still-square':0.84,'still-cover':0.86,'still-banner':0.5};
+const STILL_AUTO_SIZE = 0.13;   // headline size in units of the short side, auto on stills (banner keeps its own scale)
+// banner (W>H*3): SoundCloud's avatar covers the bottom left and mobile crops the sides, so portrait and text sit as one unit in the middle band
+const BANNER = {portraitText:0.40, portraitSolo:0.5, fill:0.82, textX:0.73, textW:0.36, labelEnd:0.94};
+const isBanner = (W,H)=> W>H*3;
+const presetY = (mode,key)=> mode==='auto' ? (STILL_AUTO_Y[key]!=null ? STILL_AUTO_Y[key] : 0.82) : (HEAD_PRESET[mode]||0.5);
 try{ const saved = JSON.parse(localStorage.getItem('skixo-vis-settings')||'null'); if(saved) S = Object.assign({}, DEFAULTS, saved); }catch(e){}
+migrateS();
 function persist(){ try{ localStorage.setItem('skixo-vis-settings', JSON.stringify(S)); }catch(e){} if(typeof saveLib==='function') saveLib(); }
 
 const $ = id => document.getElementById(id);
@@ -1018,6 +1028,10 @@ function frameInner(ctx, W, H, t){
   }
   else if(tall){ size = W*Math.min(1.05, S.badgeSize*1.12); cx=W/2; cy=H*0.41; }
   else { size = H*S.badgeSize; cx=W/2; cy=H*0.5; }
+  if(isBanner(W,H) && S.layout!=='wallpaper'){   // banner: its own composition, still scaled by Portrait size and offset by Vertical position
+    cx = W*(bannerHasText() ? BANNER.portraitText : BANNER.portraitSolo);
+    if(S.layout!=='close') size = H*BANNER.fill/0.944*(S.badgeSize/DEFAULTS.badgeSize);   // the disc is 0.944 of the art, so this fills ~82% of the height
+  }
   cy += (S.portraitY||0)*H;   // positive moves down
   const breathe = 1 + Math.sin(t*2*Math.PI/7.5)*0.008*S.breathe;
   const scale = breathe * (1 + k*0.022);
@@ -1332,19 +1346,22 @@ async function ensureFont(){
 const FMT_NAMES = {v16:'Video 16:9', v9:'Video 9:16 and Canvas', 'still-yt':'YouTube thumbnail', 'still-ig':'Post 4:5', 'still-story':'Story cover', 'still-square':'Square', 'still-cover':'Cover art', 'still-banner':'SoundCloud banner'};
 function fmtKey(W,H){ if(RENDER_STILL) return 'still-'+$('stillSize').value; return H>W ? 'v9' : 'v16'; }
 const HEAD_PRESET = {'headline-top':0.16, headline:0.5, 'headline-bottom':0.82};
+const stillMode = ()=> (RENDER_STILL && S.stillText!=='same') ? S.stillText : S.textPos;
+function bannerHasText(){ return S.subject!=='text' && S.bannerText!=='none' && !['off','none'].includes(stillMode()); }
 let HEAD_BOX = null, TEXT_GUIDE = null;   // HEAD_BOX: stage-only hit box of the headline, in canvas pixels
 function drawHeadline(ctx,W,H,U,mode){
   const lc = s => S.lowercase ? s.toLowerCase().replace(/skixo/g,'skixO') : s;
   const typed = RENDER_STILL && S.stillHeadline;   // a typed headline keeps its own case
   const title = S.showTitle===false && !typed ? '' : (typed ? S.stillHeadline : lc(S.title || ''));
-  const sc = S.textScale||1; let ts = U*0.17*sc;
+  const sc = S.textScale||1; let ts = U*(mode==='auto' && RENDER_STILL && !isBanner(W,H) ? STILL_AUTO_SIZE : 0.17)*sc;
   ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
   const font = px => `600 ${px}px ${FONT()}`;
   ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`;
-  const side = W>H*3, cx = side ? W*0.8 : W/2, maxW = side ? W*0.34 : W*0.9;   // banners: the avatar covers the left, so text sits right
+  const side = isBanner(W,H), cx = side ? W*BANNER.textX : W/2, maxW = side ? W*BANNER.textW : W*0.9;   // banners: text sits in the middle band, right of the portrait
   while(ts>U*0.04 && ctx.measureText(title).width > maxW){ ts*=0.92; ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`; }
-  const ov = S.textY && S.textY[fmtKey(W,H)], y = H*(typeof ov==='number' ? Math.max(0.04,Math.min(0.96,ov)) : (HEAD_PRESET[mode]||0.5));
+  const ov = S.textY && S.textY[fmtKey(W,H)], hasOv = typeof ov==='number', y0 = H*(hasOv ? Math.max(0.04,Math.min(0.96,ov)) : presetY(mode,fmtKey(W,H)));
   const as = ts*0.3, showA = RENDER_STILL ? !!S.stillArtist : S.showArtist!==false;
+  const y = (side && mode==='auto' && !hasOv && showA && title) ? y0 - (ts*0.62 + as*0.6)*(S.headGap==null ? 1 : S.headGap)/2 : y0;   // banner: centre title and artist together
   const stroke=(txt,x,yy,w)=>{ ctx.strokeStyle=S.paperCol; ctx.lineWidth=w; ctx.strokeText(txt,x,yy); ctx.fillText(txt,x,yy); };
   ctx.fillStyle=S.ink;
   const tw = title ? ctx.measureText(title).width : 0; let aw = 0, ay = y;
@@ -1360,12 +1377,12 @@ function drawHeadline(ctx,W,H,U,mode){
   ctx.restore(); ctx.letterSpacing='0px';
 }
 function drawText(ctx,W,H,U,tall,t){
-  const side = W>H*3;   // banners: the avatar covers the left, so text sits on the right or not at all
+  const side = isBanner(W,H);   // banners: the avatar covers the left, so text sits right of the portrait or not at all
   if(side && S.bannerText==='none') return;
   if(side) U = Math.max(U, W*0.3);   // keep the text legible at this height
-  const mode = (RENDER_STILL && S.stillText!=='same') ? S.stillText : S.textPos;
+  const mode = stillMode();
   if(mode==='off' || mode==='none') return;
-  if(mode.startsWith('headline')) return drawHeadline(ctx,W,H,U,mode);
+  if(mode==='auto' || mode.startsWith('headline')) return drawHeadline(ctx,W,H,U,mode);
   const lc = s => S.lowercase ? s.toLowerCase().replace(/skixo/g,'skixO') : s;
   const showA = RENDER_STILL ? !!S.stillArtist : S.showArtist!==false;
   const title = S.showTitle===false ? '' : lc(S.title||''), artist = showA ? (S.artist||'') : '', credit = S.credit||'';
@@ -1373,10 +1390,11 @@ function drawText(ctx,W,H,U,tall,t){
   let x, y, align;
   const tp = S.textPos||'bottom-left', isTop = tp.startsWith('top-') && !tall, hpos = tall ? 'centre' : side ? 'right' : tp.split('-')[1];
   align = hpos==='centre' ? 'center' : hpos==='right' ? 'right' : 'left';
-  x = align==='center' ? W/2 : align==='right' ? W-m : m;
+  x = align==='center' ? W/2 : align==='right' ? (side ? W*BANNER.labelEnd : W-m) : m;
   y = tall ? H*0.78 : isTop ? m+U*0.04 : H-m*1.05;
   ctx.textAlign=align; ctx.textBaseline='alphabetic';
   const ts = U*(tall?0.05:0.044)*(S.textScale||1), as = U*(tall?0.028:0.024)*(S.textScale||1);
+  if(side) y = H*0.5 + as*0.85 + ts*0.375;   // banner label: vertically centred as a pair
   const topLeft = isTop;
   const titleY = topLeft ? y : y - as*1.7;
   const artY = topLeft ? y + as*1.7 : y;
@@ -1432,6 +1450,12 @@ function drawOverlays(c,W,H){   // preview-only guides, never part of an export
   const zone=(x,y,w,h)=>{ c.fillRect(x,y,w,h); c.strokeRect(Math.round(x)+0.5,Math.round(y)+0.5,Math.round(w)-1,Math.round(h)-1); };
   if(nine){ zone(0,0,W,H*0.14); zone(0,H*0.78,W,H*0.22); zone(W*0.88,H*0.55,W*0.12,H*0.23); }
   else if(still && sz==='ig'){ const cw=H*0.75, x=(W-cw)/2; c.fillRect(0,0,x,H); c.fillRect(W-x,0,x,H); c.beginPath(); c.moveTo(Math.round(x)+0.5,0); c.lineTo(Math.round(x)+0.5,H); c.moveTo(Math.round(W-x)+0.5,0); c.lineTo(Math.round(W-x)+0.5,H); c.stroke(); }
+  else if(still && isBanner(W,H)){   // avatar sits over the bottom left; mobile shows roughly the middle 60%
+    zone(0,H*0.55,W*0.22,H*0.45);
+    c.strokeStyle='rgba(255,255,255,0.85)'; c.beginPath();
+    for(const f of [0.2,0.8]){ const x=Math.round(W*f)+0.5; c.moveTo(x,0); c.lineTo(x,H); }
+    c.stroke();
+  }
   c.restore();
 }
 function render(){
@@ -1572,7 +1596,7 @@ $('copySettings').addEventListener('click', async ()=>{
   catch(e){ $('pasteSettings').value = txt; $('pasteSettings').select(); setStatus('Settings selected below; copy them with Ctrl+C'); }
 });
 $('applySettings').addEventListener('click', ()=>{
-  try{ const o = JSON.parse($('pasteSettings').value); S = Object.assign({}, DEFAULTS, o); syncUI(); setAspect(); overlayCache={}; loadWordmark(); rebuildCues(); persist(); setStatus('Settings applied'); }
+  try{ const o = JSON.parse($('pasteSettings').value); S = Object.assign({}, DEFAULTS, o); migrateS(); syncUI(); setAspect(); overlayCache={}; loadWordmark(); rebuildCues(); persist(); setStatus('Settings applied'); }
   catch(e){ setStatus('Those settings could not be read. Paste the full copied text.', true); }
 });
 $('resetSettings').addEventListener('click', ()=>{ S = Object.assign({}, DEFAULTS); syncUI(); setAspect(); overlayCache={}; loadWordmark(); rebuildCues(); persist(); setStatus('Defaults restored'); });
@@ -1905,7 +1929,7 @@ const esc = t => String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&
 async function openRelease(id){
   saveLib(); stop(); LIB.current = id;
   const pp = rel().own && rel().own.patch, pg = grp().patches||{};
-  S = Object.assign({}, DEFAULTS, grp().shared, (pp && pg[pp]) || {}, rel().own); if(pp && !pg[pp]) S.patch=null;
+  S = Object.assign({}, DEFAULTS, grp().shared, (pp && pg[pp]) || {}, rel().own); if(pp && !pg[pp]) S.patch=null; migrateS();
   if(typeof markPatches==='function') markPatches();
   if(grp().id!==artGroup) await loadArtwork();
   syncUI(); setAspect(); refreshArt(); fillPickers(); persist(); if($('mslot')) showMotionSec(); if(S.bgId) pickBg(S.bgId,false); if(BGLIB.length) loadSecBgs();
@@ -1931,12 +1955,12 @@ async function loadLibrary(){
     LIB = {groups:[g], releases:[r], current:r.id};
     const old = await store.get('audio'); if(old && old.blob) await store.put('audio-'+r.id, old.blob, old.name);
   }
-  { const pp=rel().own&&rel().own.patch, pg=grp().patches||{}; S = Object.assign({}, DEFAULTS, grp().shared, (pp&&pg[pp])||{}, rel().own); if(pp&&!pg[pp]) S.patch=null; } syncUI(); setAspect(); fillPickers(); if(typeof markPatches==='function') setTimeout(markPatches);
+  { const pp=rel().own&&rel().own.patch, pg=grp().patches||{}; S = Object.assign({}, DEFAULTS, grp().shared, (pp&&pg[pp])||{}, rel().own); if(pp&&!pg[pp]) S.patch=null; migrateS(); } syncUI(); setAspect(); fillPickers(); if(typeof markPatches==='function') setTimeout(markPatches);
 }
 
 /* ---------------- segmented controls: selects marked data-seg become button groups (the select stays the source of truth) ---------------- */
 const SHORT = {'720':'720p test','1080':'1080p','1440':'1440p','16:9':'16:9','9:16':'9:16','badge':'Badge','close':'Close-up','wallpaper':'Wide','auto':'Auto','manual':'Cue list','bottom-left':'Bottom left','bottom-centre':'Bottom centre','top-left':'Top left','headline':'Headline','headline-top':'Headline top','headline-bottom':'Headline bottom','off':'None','none':'None','same':'As video','one':'Current shape','both':'Both shapes','full':'Whole track','test':'15 s test','yt':'YouTube','ig':'Post 4:5','story':'Story','square':'Square','cover':'Cover art','banner':'Banner','right':'Right side','play':'Playhead','big':'Biggest moment','soft':'Soft','ring':'Ring','trim':'Trim'};
-function segLabel(o){ if(SHORT[o.value]) return SHORT[o.value]; return o.textContent.replace(/\s*\(.*\)/,'').replace(/ fps$/,' fps'); }
+function segLabel(o){ if(o.parentNode.id==='stillText' && o.value==='auto') return 'Headline (auto)'; if(SHORT[o.value]) return SHORT[o.value]; return o.textContent.replace(/\s*\(.*\)/,'').replace(/ fps$/,' fps'); }
 document.querySelectorAll('select[data-seg]').forEach(sel=>{
   const seg=document.createElement('div'); seg.className='seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label', (sel.closest('.row')?.querySelector('label')?.textContent)||sel.id);
   [...sel.options].forEach(o=>{ const b=document.createElement('button'); b.type='button'; b.textContent=segLabel(o); b.title=o.textContent; b.dataset.v=o.value;
@@ -2214,8 +2238,8 @@ const ANCHOR_NAMES=['Top','Middle','Bottom'], COL_NAMES=['left','centre','right'
 const uiStill = ()=> !!$('stillPreview').checked;
 const uiKey = ()=> uiStill() ? 'still-'+$('stillSize').value : (S.aspect==='9:16' ? 'v9' : 'v16');
 const uiMode = ()=> (uiStill() && S.stillText!=='same') ? S.stillText : (S.textPos||'');
-const uiHeadline = ()=> uiMode().startsWith('headline');
-const headY = ()=>{ const o=(S.textY||{})[uiKey()]; return typeof o==='number' ? Math.max(0.04,Math.min(0.96,o)) : (HEAD_PRESET[uiMode()]||0.5); };
+const uiHeadline = ()=> uiMode()==='auto' || uiMode().startsWith('headline');
+const headY = ()=>{ const o=(S.textY||{})[uiKey()]; return typeof o==='number' ? Math.max(0.04,Math.min(0.96,o)) : presetY(uiMode(),uiKey()); };
 function setTextY(key,v,quiet){ const o=Object.assign({},S.textY); if(v==null){ if(!(key in o)) return; delete o[key]; } else o[key]=Math.round(v*1000)/1000; S.textY=o; persist(); syncHeightUI(); if(!quiet) requestDraw(); }
 function syncHeightUI(){ if(window.KIT_READY) kitSync(); const row=$('heightRow'); if(!row) return; const on=uiHeadline(); row.hidden=!on; if(!on) return;
   const k=uiKey(), v=headY(), set=typeof (S.textY||{})[k]==='number';
@@ -2263,7 +2287,7 @@ for(const k of Object.keys(IMGS)){ const src = RAW[k] || (IMGS[k] && (IMGS[k]._s
     if(!on()) return; e.preventDefault(); sd={y:e.clientY,v:+S.portraitY||0}; st.setPointerCapture(e.pointerId); wrap.classList.add('grab'); });
   st.addEventListener('pointermove',e=>{
     if(td){ let v=Math.max(0.04,Math.min(0.96,td.v+(e.clientY-td.y)/st.getBoundingClientRect().height)); TEXT_GUIDE=null;
-      if(!e.altKey) for(const s of [0.16,0.5,0.82]) if(Math.abs(v-s)<0.012){ v=s; TEXT_GUIDE=s; break; }
+      if(!e.altKey) for(const s of (uiStill() && STILL_AUTO_Y[uiKey()]!=null ? [0.16,0.5,0.82,STILL_AUTO_Y[uiKey()]] : [0.16,0.5,0.82])) if(Math.abs(v-s)<0.012){ v=s; TEXT_GUIDE=s; break; }
       setTextY(uiKey(),v); return; }
     if(sd){ setR('portraitY', sd.v + (e.clientY-sd.y)/st.getBoundingClientRect().height); return; }
     st.style.cursor = onHead(e) ? 'ns-resize' : ''; });
