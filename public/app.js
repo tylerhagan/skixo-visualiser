@@ -1,7 +1,7 @@
 "use strict";
 /* ---------------- settings ---------------- */
 const DEFAULTS = {
-  layout:'badge', aspect:'16:9', kit:['yt','ig','story','square','cover','banner','wide','canvas'], kitMoment:'big',
+  layout:'badge', aspect:'16:9', kit:['yt','ig','story','square','cover','banner','wide','canvas'], kitMoment:'big', bannerText:'right',
   poseMode:'auto', peakCount:2, poseLow:0.40, poseHigh:0.93, poseHold:8, poseFade:3, eyeFade:0, blinks:0, snapKick:true, nod:0.4, nodEvery:'2', nodGate:0.3, bpm:'', manualCues:'',
   badgeSize:0.80, portraitY:0, breathe:0.5, kick:0.45, sway:0.3,
   rings:0.45, misprint:0.3, spectrum:0.4,
@@ -60,7 +60,7 @@ function syncUI(){
   if(typeof syncBgColour==='function') setTimeout(syncBgColour);
   if(typeof syncSeg==='function') setTimeout(syncSeg);
   for(const list of Object.values(SLIDERS)) for(const [k] of list){ $(k).value = S[k]; $(k+'-o').textContent = fmtVal(+S[k]); }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','kitMoment','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP','headMove']) $(k).value = S[k];
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','kitMoment','bannerText','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP','headMove']) $(k).value = S[k];
   $('useWordmark').checked = S.useWordmark; $('lineQuiet').checked=!!S.lineQuiet; $('introAnim').checked=S.introAnim!==false; $('phonesPeak').checked=!!S.phonesPeak; $('echoLine').checked=!!S.echoLine; $('showTitle').checked = S.showTitle!==false; $('showArtist').checked = S.showArtist!==false; $('stillArtist').checked = !!S.stillArtist; $('bgMatch').checked = S.bgMatch!==false; $('lowercase').checked = S.lowercase; $('snapKick').checked = S.snapKick;
   $('autoPose').hidden = S.poseMode!=='auto'; $('manualPose').hidden = S.poseMode!=='manual';
   if(window.KIT_READY) kitSync();
@@ -76,7 +76,7 @@ function bindUI(){
       $(k+'-o').textContent = fmtVal(v); onChange(k);
     });
   }
-  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','kitMoment','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP','headMove']){
+  for(const k of ['layout','aspect','poseMode','title','artist','credit','textPos','ink','blue','paperCol','manualCues','nodEvery','bpm','edge','stillText','stillHeadline','kitMoment','bannerText','font','fontCustom','captions','capPos','lyrics','capStyle','capColour','capWeight','capCase','capAnim','subject','frameShape','logoTint','clipBars','styleQ','styleL','styleP','headMove']){
     $(k).addEventListener('input', e=>{ S[k] = e.target.value; onChange(k); });
   }
   for(const k of ['useWordmark','lowercase','snapKick','showTitle','showArtist','stillArtist','lineQuiet','phonesPeak','echoLine','introAnim']) $(k).addEventListener('change', e=>{ S[k]=e.target.checked; onChange(k); });
@@ -1292,25 +1292,28 @@ function drawHeadline(ctx,W,H,U,mode){
   ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineJoin='round';
   const font = px => `600 ${px}px ${FONT()}`;
   ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`;
-  while(ts>U*0.04 && ctx.measureText(title).width > W*0.9){ ts*=0.92; ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`; }
+  const side = W>H*3, cx = side ? W*0.8 : W/2, maxW = side ? W*0.34 : W*0.9;   // banners: the avatar covers the left, so text sits right
+  while(ts>U*0.04 && ctx.measureText(title).width > maxW){ ts*=0.92; ctx.font=font(ts); ctx.letterSpacing=`${-ts*0.02}px`; }
   const ov = S.textY && S.textY[fmtKey(W,H)], y = H*(typeof ov==='number' ? Math.max(0.04,Math.min(0.96,ov)) : (HEAD_PRESET[mode]||0.5));
   const as = ts*0.3, showA = RENDER_STILL ? !!S.stillArtist : S.showArtist!==false;
   const stroke=(txt,x,yy,w)=>{ ctx.strokeStyle=S.paperCol; ctx.lineWidth=w; ctx.strokeText(txt,x,yy); ctx.fillText(txt,x,yy); };
   ctx.fillStyle=S.ink;
   const tw = title ? ctx.measureText(title).width : 0; let aw = 0, ay = y;
-  if(title) stroke(title, W/2, y, ts*0.16);
+  if(title) stroke(title, cx, y, ts*0.16);
   if(showA){
     ay = y + (ts*0.62 + as*0.6)*(S.headGap==null ? 1 : S.headGap);
     if(S.useWordmark && wordmarkImg){
       const h=as*1.4, w=h*wordmarkImg.naturalWidth/wordmarkImg.naturalHeight;
-      aw=w; ctx.shadowColor=S.paperCol; ctx.shadowBlur=as*0.5; ctx.drawImage(wordmarkImg, W/2-w/2, ay-h/2, w, h); ctx.shadowBlur=0;
-    } else { ctx.font=`500 ${as}px ${FONT()}`; ctx.letterSpacing=`${as*0.14}px`; ctx.fillStyle=S.blue; aw=ctx.measureText(S.artist||'').width; stroke(S.artist||'', W/2, ay, as*0.3); }
+      aw=w; ctx.shadowColor=S.paperCol; ctx.shadowBlur=as*0.5; ctx.drawImage(wordmarkImg, cx-w/2, ay-h/2, w, h); ctx.shadowBlur=0;
+    } else { ctx.font=`500 ${as}px ${FONT()}`; ctx.letterSpacing=`${as*0.14}px`; ctx.fillStyle=S.blue; aw=ctx.measureText(S.artist||'').width; stroke(S.artist||'', cx, ay, as*0.3); }
   }
-  if(ctx===sctx){ const bw=Math.max(tw,aw,U*0.1), top=title ? y-ts*0.6 : ay-as*0.8, bot=showA ? ay+as*0.8 : y+ts*0.6; HEAD_BOX={x:W/2-bw/2, y:top, w:bw, h:Math.max(bot-top,as), W, H}; }
+  if(ctx===sctx){ const bw=Math.max(tw,aw,U*0.1), top=title ? y-ts*0.6 : ay-as*0.8, bot=showA ? ay+as*0.8 : y+ts*0.6; HEAD_BOX={x:cx-bw/2, y:top, w:bw, h:Math.max(bot-top,as), W, H}; }
   ctx.restore(); ctx.letterSpacing='0px';
 }
 function drawText(ctx,W,H,U,tall,t){
-  if(W>H*3) U = Math.max(U, W*0.3);   // extreme banners: keep the corner text legible
+  const side = W>H*3;   // banners: the avatar covers the left, so text sits on the right or not at all
+  if(side && S.bannerText==='none') return;
+  if(side) U = Math.max(U, W*0.3);   // keep the text legible at this height
   const mode = (RENDER_STILL && S.stillText!=='same') ? S.stillText : S.textPos;
   if(mode==='off' || mode==='none') return;
   if(mode.startsWith('headline')) return drawHeadline(ctx,W,H,U,mode);
@@ -1319,7 +1322,7 @@ function drawText(ctx,W,H,U,tall,t){
   const title = S.showTitle===false ? '' : lc(S.title||''), artist = showA ? (S.artist||'') : '', credit = S.credit||'';
   const m = U*0.065;
   let x, y, align;
-  const tp = S.textPos||'bottom-left', isTop = tp.startsWith('top-') && !tall, hpos = tall ? 'centre' : tp.split('-')[1];
+  const tp = S.textPos||'bottom-left', isTop = tp.startsWith('top-') && !tall, hpos = tall ? 'centre' : side ? 'right' : tp.split('-')[1];
   align = hpos==='centre' ? 'center' : hpos==='right' ? 'right' : 'left';
   x = align==='center' ? W/2 : align==='right' ? W-m : m;
   y = tall ? H*0.78 : isTop ? m+U*0.04 : H-m*1.05;
@@ -1364,6 +1367,7 @@ function setAspect(){
   stage.width = tall?720:1280; stage.height = tall?1280:720;
   if($('stillPreview') && $('stillPreview').checked){ const [w,h]=STILL_DIMS[$('stillSize').value]; const k=Math.min(1280/w,1280/h); stage.width=Math.round(w*k); stage.height=Math.round(h*k); }
   $('stagewrap').classList.toggle('tall', tall);
+  if($('bannerTextRow')) $('bannerTextRow').hidden = !$('stillPreview').checked || $('stillSize').value!=='banner';
   $('stagewrap').classList.toggle('wide', !!($('stillPreview') && $('stillPreview').checked) && stage.width/stage.height>2.5);
   if(window.LOOKUI_READY) syncHeightUI();
   if(window.KIT_READY) kitSync();
@@ -1777,7 +1781,7 @@ $('forgetFiles').addEventListener('click', async ()=>{ await store.clear(); setS
 /* ---------------- releases and groups ----------------
    A group (album, series, playlist) holds the shared look; each release holds its own track, titles and cues. */
 const SHARED_KEYS = ['headMove','styleQ','styleL','styleP','introAnim','clipIn','clipOut','clipBars','subject','frameShape','fSticker','fShadow','fOffset','logoTint','lineQuiet','phonesPeak','echoLine','look','artTint','paperCol','ink','blue','edge','layout','badgeSize','portraitY','breathe','kick','sway','rings','misprint',
-  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','textY','kit','headGap','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
+  'spectrum','dashes','dashSpeed','clouds','cloudSpeed','glitch','glitchQuiet','glitchLift','glitchPeak','glitchTear','glitchSplit','glitchBlocks','glitchRoll','gSort','gMosh','gMirror','echo','bgDrift','bgOpacity','bgBlur','bgId','bgSec','bgAdj','mAdj','bgColour','light','grain','vignette','artist','textPos','textScale','textY','bannerText','kit','headGap','font','fontCustom','showTitle','showArtist','useWordmark','lowercase','nod','nodEvery','nodGate','poseFade'];
 let LIB = null, libTimer = null;
 const uid = ()=> Math.random().toString(36).slice(2,9);
 const grp = ()=> LIB.groups.find(g=>g.id===rel().groupId);
@@ -1829,7 +1833,7 @@ async function loadLibrary(){
 }
 
 /* ---------------- segmented controls: selects marked data-seg become button groups (the select stays the source of truth) ---------------- */
-const SHORT = {'720':'720p test','1080':'1080p','1440':'1440p','16:9':'16:9','9:16':'9:16','badge':'Badge','close':'Close-up','wallpaper':'Wide','auto':'Auto','manual':'Cue list','bottom-left':'Bottom left','bottom-centre':'Bottom centre','top-left':'Top left','headline':'Headline','headline-top':'Headline top','headline-bottom':'Headline bottom','off':'None','none':'None','same':'As video','one':'Current shape','both':'Both shapes','full':'Whole track','test':'15 s test','yt':'YouTube','ig':'Post 4:5','story':'Story','square':'Square','cover':'Cover art','banner':'Banner','play':'Playhead','big':'Biggest moment','soft':'Soft','ring':'Ring','trim':'Trim'};
+const SHORT = {'720':'720p test','1080':'1080p','1440':'1440p','16:9':'16:9','9:16':'9:16','badge':'Badge','close':'Close-up','wallpaper':'Wide','auto':'Auto','manual':'Cue list','bottom-left':'Bottom left','bottom-centre':'Bottom centre','top-left':'Top left','headline':'Headline','headline-top':'Headline top','headline-bottom':'Headline bottom','off':'None','none':'None','same':'As video','one':'Current shape','both':'Both shapes','full':'Whole track','test':'15 s test','yt':'YouTube','ig':'Post 4:5','story':'Story','square':'Square','cover':'Cover art','banner':'Banner','right':'Right side','play':'Playhead','big':'Biggest moment','soft':'Soft','ring':'Ring','trim':'Trim'};
 function segLabel(o){ if(SHORT[o.value]) return SHORT[o.value]; return o.textContent.replace(/\s*\(.*\)/,'').replace(/ fps$/,' fps'); }
 document.querySelectorAll('select[data-seg]').forEach(sel=>{
   const seg=document.createElement('div'); seg.className='seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label', (sel.closest('.row')?.querySelector('label')?.textContent)||sel.id);
